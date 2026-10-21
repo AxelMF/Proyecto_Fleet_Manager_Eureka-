@@ -16,14 +16,8 @@ jobs:
           mkdir -p dist
           cp index.html dist/
 
-      - name: Debug wrangler deploy
-        run: npx wrangler@3.90.0 deploy --verbose 2>&1 || true
+      - name: Deploy to Cloudflare Workers
+        run: npx wrangler@3.90.0 deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 97ee988f729926e813b151fb7ad8acb2
-
-      - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: 97ee988f729926e813b151fb7ad8acb2
