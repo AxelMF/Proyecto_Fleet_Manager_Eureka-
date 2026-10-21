@@ -2,4 +2,4 @@ name = "eureka-fleet-manager"
 compatibility_date = "2024-11-01"
 
 [assets]
-directory = "."
+directory = "dist"
