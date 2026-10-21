@@ -16,4 +16,3 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 97ee988f729926e813b151fb7ad8acb2
-          command: deploy --assets . --name eureka-fleet-manager --compatibility-date 2024-11-01
