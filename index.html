@@ -4769,6 +4769,7 @@ async function doLogin(){
   const pass  = document.getElementById('login-pass').value;
   document.getElementById('login-error').textContent = '';
   if(!email||!pass){ document.getElementById('login-error').textContent='Completa los campos.'; return; }
+  await sb.auth.signOut().catch(()=>{});
   const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
   if(error){
     const msg = error.message==='Failed to fetch'
