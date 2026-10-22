@@ -15,6 +15,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html dist/
+          cp _headers dist/
 
       - name: Deploy to Cloudflare Workers
         run: npx wrangler@3.90.0 deploy
