@@ -443,6 +443,8 @@ tbody td{padding:11px 14px;color:var(--text)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 // ─── CONFIG ───────────────────────────────────────────────
 const SB_URL  = 'https://nfyhuuryucdhkovugoue.supabase.co';
@@ -4819,177 +4821,192 @@ function ejecutarImpresion(){
   const incFirma = document.getElementById('inf-chk-firma')?.checked === true;
   const incNotas = document.getElementById('inf-chk-notas')?.checked === true;
   cerrarModalInforme();
-  generarVentanaImpresion(_infCtx.modulo, _infCtx.titulo, _infCtx.icono,
+  generarPDFDescarga(_infCtx.modulo, _infCtx.titulo, _infCtx.icono,
     _infCtx.datos, EXPORT_COLS[_infCtx.modulo] || [], { incTabla, incFirma, incNotas });
 }
 
-function generarVentanaImpresion(modulo, titulo, icono, datos, cols, opciones){
-  const fecha = new Date().toLocaleDateString('es-DO',{
-    day:'2-digit', month:'long', year:'numeric'
-  });
-  const hora = new Date().toLocaleTimeString('es-DO',{ hour:'2-digit', minute:'2-digit' });
-  const total = datos.length;
+function generarPDFDescarga(modulo, titulo, icono, datos, cols, opciones){
+  if(typeof window.jspdf === 'undefined'){
+    toast('Librería PDF cargando, intenta de nuevo en 2 segundos','error'); return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
 
-  // Construir filas de tabla
-  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  const thead = cols.map(c=>`<th>${esc(c.label)}</th>`).join('');
-  const tbody = datos.map((row,i)=>{
-    const tds = cols.map(c=>`<td>${esc(row[c.key])}</td>`).join('');
-    return `<tr class="${i%2===0?'even':'odd'}">${tds}</tr>`;
-  }).join('');
+  const DARK  = [26, 26, 46];
+  const GOLD  = [201, 168, 76];
+  const WHITE = [255, 255, 255];
+  const GRAY  = [247, 247, 247];
+  const TEXT2 = [120, 120, 130];
 
-  // KPIs básicos según módulo
-  let kpiHtml = '';
+  const W = doc.internal.pageSize.getWidth();   // 297
+  const H = doc.internal.pageSize.getHeight();  // 210
+  const mL = 12, mR = 12, mT = 10;
+  const cW = W - mL - mR;
+
+  const fechaStr = new Date().toLocaleDateString('es-DO',{day:'2-digit',month:'long',year:'numeric'});
+  const horaStr  = new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+  const nombreArchivo = `Informe_${titulo.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+  // ── Encabezado ────────────────────────────────────────────
+  doc.setFillColor(...DARK);
+  doc.roundedRect(mL, mT, cW, 22, 3, 3, 'F');
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(14);
+  doc.setTextColor(...WHITE);
+  doc.text(`${titulo.toUpperCase()}`, mL+6, mT+9);
+
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...GOLD);
+  doc.text('ALMONTE INGENIERÍA Y TECNOLOGÍA SRL', mL+6, mT+14);
+
+  doc.setTextColor(170,170,170);
+  doc.text('Eureka Fleet Manager  ·  Informe generado automáticamente', mL+6, mT+19);
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text(fechaStr, W-mR-2, mT+10, {align:'right'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7);
+  doc.setTextColor(150,150,150);
+  doc.text(horaStr, W-mR-2, mT+15, {align:'right'});
+
+  let curY = mT + 27;
+
+  // ── KPIs ──────────────────────────────────────────────────
+  const kpis = [];
   if(modulo==='vehiculos'){
-    const activos = datos.filter(r=>r.estado==='Activo'||r.estado==='activo').length;
-    const taller  = datos.filter(r=>r.estado==='Taller'||r.estado==='taller').length;
+    const activos   = datos.filter(r=>r.estado==='Activo'||r.estado==='activo').length;
+    const taller    = datos.filter(r=>r.estado==='Taller'||r.estado==='taller').length;
     const inactivos = datos.filter(r=>r.estado==='Inactivo'||r.estado==='inactivo').length;
-    kpiHtml = `<div class="kpi-row">
-      <div class="kpi"><div class="kv" style="color:#22c55e">${activos}</div><div class="kl">Activos</div></div>
-      <div class="kpi"><div class="kv" style="color:#f59e0b">${taller}</div><div class="kl">En Taller</div></div>
-      <div class="kpi"><div class="kv" style="color:#ef4444">${inactivos}</div><div class="kl">Inactivos</div></div>
-      <div class="kpi"><div class="kv">${total}</div><div class="kl">Total Flota</div></div>
-    </div>`;
+    kpis.push({label:'ACTIVOS',   val:String(activos),   color:[34,197,94]});
+    kpis.push({label:'EN TALLER', val:String(taller),    color:[245,158,11]});
+    kpis.push({label:'INACTIVOS', val:String(inactivos), color:[239,68,68]});
+    kpis.push({label:'TOTAL FLOTA',val:String(datos.length),color:DARK});
   } else if(['reparaciones','pinchazos','neumaticos','baterias'].includes(modulo)){
-    const costoTotal = datos.reduce((s,r)=>s+(parseFloat(r.coste)||parseFloat(r.precio)||0),0);
-    kpiHtml = `<div class="kpi-row">
-      <div class="kpi"><div class="kv">${total}</div><div class="kl">Registros</div></div>
-      <div class="kpi"><div class="kv">RD$ ${costoTotal.toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kl">Costo Total</div></div>
-    </div>`;
+    const ct = datos.reduce((s,r)=>s+(parseFloat(r.coste)||parseFloat(r.precio)||0),0);
+    kpis.push({label:'REGISTROS',   val:String(datos.length), color:DARK});
+    kpis.push({label:'COSTO TOTAL', val:`RD$ ${ct.toLocaleString('es-DO',{minimumFractionDigits:2})}`, color:GOLD});
   } else {
-    kpiHtml = `<div class="kpi-row">
-      <div class="kpi"><div class="kv">${total}</div><div class="kl">Total registros</div></div>
-    </div>`;
+    kpis.push({label:'TOTAL REGISTROS', val:String(datos.length), color:DARK});
   }
 
-  const tablaHtml = opciones.incTabla && cols.length > 0 ? `
-    <h3 class="sec-title">Detalle de Registros</h3>
-    <table>
-      <thead><tr>${thead}</tr></thead>
-      <tbody>${tbody || '<tr><td colspan="'+cols.length+'" class="empty">Sin registros</td></tr>'}</tbody>
-    </table>
-  ` : '';
-
-  const firmaHtml = opciones.incFirma ? `
-    <div class="firma-area" style="margin-top:32px;page-break-inside:avoid">
-      <h3 class="sec-title">Firmas y Aprobación</h3>
-      <div class="firma-grid">
-        <div class="firma-box">
-          <div class="firma-line"></div>
-          <div class="firma-label">Elaborado por</div>
-        </div>
-        <div class="firma-box">
-          <div class="firma-line"></div>
-          <div class="firma-label">Revisado por</div>
-        </div>
-        <div class="firma-box">
-          <div class="firma-line"></div>
-          <div class="firma-label">Aprobado por</div>
-        </div>
-      </div>
-    </div>
-  ` : '';
-
-  const notasHtml = opciones.incNotas ? `
-    <div class="notas-area" style="margin-top:24px;page-break-inside:avoid">
-      <h3 class="sec-title">Observaciones</h3>
-      <div class="notas-box"></div>
-    </div>
-  ` : '';
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>${titulo} — Eureka Fleet Manager</title>
-<style>
-  @page { size: A4 landscape; margin: 1.5cm 1.8cm; }
-  *{ box-sizing:border-box; margin:0; padding:0; }
-  body{ font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a2e; background:#fff; }
-
-  /* ENCABEZADO */
-  .header{ background:#1a1a2e; color:#fff; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:6px; margin-bottom:14px; }
-  .header-left{ display:flex; flex-direction:column; }
-  .header-empresa{ font-size:7.5pt; color:#C9A84C; letter-spacing:.08em; text-transform:uppercase; }
-  .header-titulo{ font-size:16pt; font-weight:700; margin:2px 0; }
-  .header-sub{ font-size:7.5pt; color:#aaa; }
-  .header-right{ text-align:right; }
-  .header-fecha{ font-size:8pt; color:#C9A84C; font-weight:600; }
-  .header-hora{ font-size:7pt; color:#888; margin-top:2px; }
-  .header-logo{ font-size:9pt; color:#fff; font-weight:700; margin-top:4px; letter-spacing:.05em; }
-
-  /* KPIs */
-  .kpi-row{ display:flex; gap:12px; margin-bottom:14px; }
-  .kpi{ flex:1; background:#f8f8f8; border:1px solid #e5e5e5; border-radius:6px; padding:10px 14px; text-align:center; }
-  .kv{ font-size:14pt; font-weight:700; color:#1a1a2e; }
-  .kl{ font-size:7pt; color:#888; margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
-
-  /* SECCIÓN */
-  .sec-title{ font-size:9pt; font-weight:700; color:#C9A84C; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; border-bottom:1px solid #e8d9a0; padding-bottom:4px; }
-
-  /* TABLA */
-  table{ width:100%; border-collapse:collapse; font-size:8pt; }
-  thead tr{ background:#1a1a2e; color:#fff; }
-  thead th{ padding:7px 8px; text-align:left; font-weight:600; font-size:7.5pt; letter-spacing:.04em; }
-  tbody tr.even{ background:#fff; }
-  tbody tr.odd{ background:#f7f7f7; }
-  tbody td{ padding:5px 8px; border-bottom:1px solid #efefef; vertical-align:middle; }
-  tbody tr:last-child td{ border-bottom:none; }
-  .empty{ text-align:center; color:#999; font-style:italic; padding:20px; }
-
-  /* FIRMAS */
-  .firma-grid{ display:flex; gap:30px; margin-top:16px; }
-  .firma-box{ flex:1; text-align:center; }
-  .firma-line{ border-bottom:1.5px solid #1a1a2e; margin-bottom:6px; height:40px; }
-  .firma-label{ font-size:8pt; color:#555; }
-
-  /* NOTAS */
-  .notas-box{ border:1px solid #ddd; border-radius:4px; min-height:80px; margin-top:8px; }
-
-  /* FOOTER */
-  .footer{ margin-top:18px; border-top:1px solid #ddd; padding-top:8px; display:flex; justify-content:space-between; font-size:7pt; color:#999; }
-
-  @media print{
-    body{ print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-    .no-print{ display:none; }
-    table{ page-break-inside:auto; }
-    tr{ page-break-inside:avoid; }
+  if(kpis.length){
+    const kW = cW / kpis.length;
+    kpis.forEach((k,i)=>{
+      const kx = mL + i*kW;
+      doc.setFillColor(248,248,248);
+      doc.setDrawColor(229,229,229);
+      doc.roundedRect(kx+1, curY, kW-2, 14, 2, 2, 'FD');
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...k.color);
+      doc.text(k.val, kx+kW/2, curY+7, {align:'center'});
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(6);
+      doc.setTextColor(...TEXT2);
+      doc.text(k.label, kx+kW/2, curY+12, {align:'center'});
+    });
+    curY += 18;
   }
-</style>
-</head>
-<body>
-  <div class="header">
-    <div class="header-left">
-      <div class="header-empresa">Almonte Ingeniería y Tecnología SRL</div>
-      <div class="header-titulo">${icono} ${titulo}</div>
-      <div class="header-sub">Eureka Fleet Manager · Informe generado automáticamente</div>
-    </div>
-    <div class="header-right">
-      <div class="header-fecha">${fecha}</div>
-      <div class="header-hora">${hora}</div>
-      <div class="header-logo">🚛 EUREKA</div>
-    </div>
-  </div>
 
-  ${kpiHtml}
-  ${tablaHtml}
-  ${firmaHtml}
-  ${notasHtml}
+  // ── Tabla ─────────────────────────────────────────────────
+  if(opciones.incTabla && cols.length > 0){
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GOLD);
+    doc.text('DETALLE DE REGISTROS', mL, curY+1);
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.3);
+    doc.line(mL, curY+3, mL+cW, curY+3);
+    curY += 6;
 
-  <div class="footer">
-    <span>Eureka Fleet Manager · Almonte Ingeniería y Tecnología SRL</span>
-    <span>Documento generado el ${fecha} a las ${hora} · Confidencial</span>
-  </div>
+    const head = [cols.map(c=>c.label.toUpperCase())];
+    const body = datos.map(row=>cols.map(c=>{ const v=row[c.key]; return v==null?'':String(v); }));
 
-<script>window.onload=function(){ window.print(); }<\/script>
-</body>
-</html>`;
+    doc.autoTable({
+      head, body,
+      startY: curY,
+      margin: { left: mL, right: mR },
+      styles: { fontSize: 7, cellPadding: 2.5, overflow:'ellipsize', halign:'left' },
+      headStyles: { fillColor: DARK, textColor: WHITE, fontStyle:'bold', fontSize:7 },
+      alternateRowStyles: { fillColor: GRAY },
+      bodyStyles: { textColor: DARK },
+      tableWidth: cW,
+      didDrawPage: (d)=>{ curY = d.cursor.y; },
+    });
+    curY = doc.lastAutoTable.finalY + 6;
+  }
 
-  const w = window.open('','_blank','width=1100,height=750');
-  if(!w){ toast('Activa las ventanas emergentes para generar el PDF','error'); return; }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+  // ── Firmas ────────────────────────────────────────────────
+  if(opciones.incFirma){
+    if(curY + 30 > H - 15){
+      doc.addPage();
+      curY = mT;
+    }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GOLD);
+    doc.text('FIRMAS Y APROBACIÓN', mL, curY+1);
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.3);
+    doc.line(mL, curY+3, mL+cW, curY+3);
+    curY += 10;
+
+    const labels = ['Elaborado por','Revisado por','Aprobado por'];
+    const fW = cW / 3;
+    labels.forEach((lbl,i)=>{
+      const fx = mL + i*fW + 10;
+      doc.setDrawColor(...DARK);
+      doc.setLineWidth(0.5);
+      doc.line(fx, curY+18, fx+fW-20, curY+18);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(7);
+      doc.setTextColor(...TEXT2);
+      doc.text(lbl, fx+(fW-20)/2, curY+23, {align:'center'});
+    });
+    curY += 28;
+  }
+
+  // ── Notas ─────────────────────────────────────────────────
+  if(opciones.incNotas){
+    if(curY + 25 > H - 15){
+      doc.addPage();
+      curY = mT;
+    }
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GOLD);
+    doc.text('OBSERVACIONES', mL, curY+1);
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.3);
+    doc.line(mL, curY+3, mL+cW, curY+3);
+    curY += 6;
+    doc.setDrawColor(220,220,220);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(mL, curY, cW, 22, 2, 2);
+    curY += 28;
+  }
+
+  // ── Footer en cada página ─────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  for(let p=1;p<=totalPages;p++){
+    doc.setPage(p);
+    const fy = H - 7;
+    doc.setDrawColor(220,220,220);
+    doc.setLineWidth(0.3);
+    doc.line(mL, fy-2, W-mR, fy-2);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(6);
+    doc.setTextColor(...TEXT2);
+    doc.text('Eureka Fleet Manager  ·  Almonte Ingeniería y Tecnología SRL  ·  Documento confidencial', mL, fy+1);
+    doc.text(`Pág. ${p} / ${totalPages}`, W-mR, fy+1, {align:'right'});
+  }
+
+  doc.save(nombreArchivo);
+  toast(`PDF descargado: ${nombreArchivo}`, 'success');
 }
 
 function btnExport(modulo, titulo){
