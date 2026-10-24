@@ -196,7 +196,8 @@ tbody td{padding:11px 14px;color:var(--text)}
 
 /* PRINT */
 @media print{
-  #sidebar,#toast-container,.modal-overlay,.btn{display:none!important}
+  #sidebar,#toast-container,.modal-overlay,.btn,
+  #informe-modal-overlay{display:none!important}
   #main{overflow:visible!important}
   .module{display:block!important}
   body{background:#fff!important;color:#000!important}
@@ -204,6 +205,51 @@ tbody td{padding:11px 14px;color:var(--text)}
   .kpi-card{border:1px solid #ccc!important;background:#f9f9f9!important;color:#000!important}
   code,.value,.tag{color:#000!important}
 }
+
+/* MODAL INFORME */
+#informe-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+}
+#informe-modal-overlay.hidden{display:none}
+#informe-modal-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:28px 32px;width:440px;max-width:95vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+#informe-modal-box h3{
+  margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--gold)
+}
+#informe-modal-box .inf-sub{
+  font-size:.82rem;color:var(--text2);margin-bottom:20px
+}
+.inf-section-list{display:flex;flex-direction:column;gap:10px;margin-bottom:22px}
+.inf-section-item{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;cursor:pointer;
+  transition:background .15s;
+}
+.inf-section-item:hover{background:rgba(201,168,76,.08)}
+.inf-section-item input[type=checkbox]{
+  width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0
+}
+.inf-section-item label{
+  font-size:.88rem;color:var(--text);cursor:pointer;flex:1
+}
+.inf-section-item .inf-icon{font-size:1rem;width:24px;text-align:center}
+.inf-actions{display:flex;gap:10px;justify-content:flex-end}
+.inf-actions .btn-cancel{
+  background:transparent;border:1px solid var(--border);color:var(--text2);
+  padding:8px 20px;border-radius:8px;font-size:.85rem;cursor:pointer;
+}
+.inf-actions .btn-cancel:hover{background:rgba(255,255,255,.06)}
+.inf-actions .btn-print{
+  background:var(--gold);color:#1a1a2e;font-weight:700;
+  padding:8px 24px;border-radius:8px;font-size:.85rem;cursor:pointer;
+  border:none;transition:opacity .15s;
+}
+.inf-actions .btn-print:hover{opacity:.88}
 
 /* MAP */
 #map-container{height:calc(100vh - 140px);border-radius:10px;overflow:hidden;border:1px solid var(--border)}
@@ -365,6 +411,19 @@ tbody td{padding:11px 14px;color:var(--text)}
     <div id="mod-exec-dash" class="module"><div class="empty-state">Cargando dashboard ejecutivo…</div></div>
     <div id="mod-usuarios" class="module"><div class="empty-state">Cargando usuarios…</div></div>
     <div id="mod-portal-mec" class="module"><div class="empty-state">Cargando portal…</div></div>
+  </div>
+</div>
+
+<!-- MODAL INFORME PDF -->
+<div id="informe-modal-overlay" class="hidden">
+  <div id="informe-modal-box">
+    <h3 id="inf-titulo">Generar Informe</h3>
+    <div class="inf-sub" id="inf-sub">Selecciona las secciones a incluir en el PDF</div>
+    <div class="inf-section-list" id="inf-section-list"></div>
+    <div class="inf-actions">
+      <button class="btn-cancel" onclick="cerrarModalInforme()">Cancelar</button>
+      <button class="btn-print" onclick="ejecutarImpresion()">🖨️ Generar PDF</button>
+    </div>
   </div>
 </div>
 
@@ -2253,6 +2312,7 @@ moduleLoaders.baterias = async function(){
     const { data, error } = await sb.from('cambios_bateria').select('*').order('fecha',{ascending:false});
     if(error) throw error;
     const rows = data || [];
+    cache.baterias = rows;
 
     // Agrupación por fecha para resumen rápido
     const porFecha = {};
@@ -4661,13 +4721,6 @@ function exportCSV(datos, columnas, nombreArchivo){
   toast(`Exportado: ${nombreArchivo}.csv`,'success');
 }
 
-function printModulo(titulo){
-  const orig = document.title;
-  document.title = `${titulo} — Eureka Fleet Manager`;
-  window.print();
-  document.title = orig;
-}
-
 // Columnas por módulo
 const EXPORT_COLS = {
   vehiculos: [
@@ -4705,14 +4758,251 @@ const EXPORT_COLS = {
     {key:'mecanico',label:'Mecánico'},{key:'mano_de_obra',label:'Mano Obra'},
     {key:'descripcion',label:'Descripción'},
   ],
+  baterias:[
+    {key:'fecha',label:'Fecha'},{key:'ficha',label:'Ficha'},
+    {key:'marca',label:'Marca'},{key:'modelo',label:'Modelo'},
+    {key:'voltaje',label:'Voltaje'},{key:'precio',label:'Precio'},
+    {key:'suplidor',label:'Suplidor'},{key:'supervisor',label:'Supervisor'},
+  ],
 };
 
+// ── SISTEMA DE INFORMES PDF ────────────────────────────────────────────────
+
+let _infCtx = null; // contexto activo del modal
+
+const INF_MODULOS = {
+  vehiculos:   { titulo:'Vehículos',       icono:'🚗', cacheKey:'vehiculos' },
+  polizas:     { titulo:'Pólizas',          icono:'📋', cacheKey:'polizas' },
+  reparaciones:{ titulo:'Reparaciones',     icono:'🔧', cacheKey:'reparaciones' },
+  pinchazos:   { titulo:'Pinchazos',        icono:'🔩', cacheKey:'pinchazos' },
+  neumaticos:  { titulo:'Neumáticos',       icono:'⭕', cacheKey:'neumaticos' },
+  mecanica:    { titulo:'Mecánica',         icono:'⚙️', cacheKey:'mecanica' },
+  baterias:    { titulo:'Baterías',         icono:'⚡', cacheKey:'baterias' },
+};
+
+function abrirModalInforme(modulo, titulo){
+  const info = INF_MODULOS[modulo] || { titulo, icono:'📄', cacheKey: modulo };
+  const cacheData = cache[info.cacheKey] || [];
+  _infCtx = { modulo, titulo: info.titulo, icono: info.icono, datos: cacheData };
+
+  document.getElementById('inf-titulo').textContent = `${info.icono} Informe — ${info.titulo}`;
+  document.getElementById('inf-sub').textContent =
+    `${cacheData.length} registro${cacheData.length !== 1 ? 's' : ''} · Selecciona las secciones a incluir`;
+
+  const secciones = [
+    { id:'encabezado', label:'Encabezado (empresa, módulo, fecha)', icono:'🏢', checked:true, disabled:true },
+    { id:'tabla',      label:'Tabla de datos completa',             icono:'📊', checked:true },
+    { id:'firma',      label:'Área de firmas y aprobación',         icono:'✍️', checked:false },
+    { id:'notas',      label:'Campo de observaciones',              icono:'📝', checked:false },
+  ];
+
+  const listEl = document.getElementById('inf-section-list');
+  listEl.innerHTML = secciones.map(s => `
+    <div class="inf-section-item" onclick="${s.disabled?'':(`document.getElementById('inf-chk-${s.id}').click()`)}">
+      <span class="inf-icon">${s.icono}</span>
+      <label for="inf-chk-${s.id}">${s.label}</label>
+      <input type="checkbox" id="inf-chk-${s.id}" ${s.checked?'checked':''} ${s.disabled?'disabled':''}>
+    </div>
+  `).join('');
+
+  document.getElementById('informe-modal-overlay').classList.remove('hidden');
+}
+
+function cerrarModalInforme(){
+  document.getElementById('informe-modal-overlay').classList.add('hidden');
+  _infCtx = null;
+}
+
+function ejecutarImpresion(){
+  if(!_infCtx) return;
+  const incTabla = document.getElementById('inf-chk-tabla')?.checked !== false;
+  const incFirma = document.getElementById('inf-chk-firma')?.checked === true;
+  const incNotas = document.getElementById('inf-chk-notas')?.checked === true;
+  cerrarModalInforme();
+  generarVentanaImpresion(_infCtx.modulo, _infCtx.titulo, _infCtx.icono,
+    _infCtx.datos, EXPORT_COLS[_infCtx.modulo] || [], { incTabla, incFirma, incNotas });
+}
+
+function generarVentanaImpresion(modulo, titulo, icono, datos, cols, opciones){
+  const fecha = new Date().toLocaleDateString('es-DO',{
+    day:'2-digit', month:'long', year:'numeric'
+  });
+  const hora = new Date().toLocaleTimeString('es-DO',{ hour:'2-digit', minute:'2-digit' });
+  const total = datos.length;
+
+  // Construir filas de tabla
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const thead = cols.map(c=>`<th>${esc(c.label)}</th>`).join('');
+  const tbody = datos.map((row,i)=>{
+    const tds = cols.map(c=>`<td>${esc(row[c.key])}</td>`).join('');
+    return `<tr class="${i%2===0?'even':'odd'}">${tds}</tr>`;
+  }).join('');
+
+  // KPIs básicos según módulo
+  let kpiHtml = '';
+  if(modulo==='vehiculos'){
+    const activos = datos.filter(r=>r.estado==='Activo'||r.estado==='activo').length;
+    const taller  = datos.filter(r=>r.estado==='Taller'||r.estado==='taller').length;
+    const inactivos = datos.filter(r=>r.estado==='Inactivo'||r.estado==='inactivo').length;
+    kpiHtml = `<div class="kpi-row">
+      <div class="kpi"><div class="kv" style="color:#22c55e">${activos}</div><div class="kl">Activos</div></div>
+      <div class="kpi"><div class="kv" style="color:#f59e0b">${taller}</div><div class="kl">En Taller</div></div>
+      <div class="kpi"><div class="kv" style="color:#ef4444">${inactivos}</div><div class="kl">Inactivos</div></div>
+      <div class="kpi"><div class="kv">${total}</div><div class="kl">Total Flota</div></div>
+    </div>`;
+  } else if(['reparaciones','pinchazos','neumaticos','baterias'].includes(modulo)){
+    const costoTotal = datos.reduce((s,r)=>s+(parseFloat(r.coste)||parseFloat(r.precio)||0),0);
+    kpiHtml = `<div class="kpi-row">
+      <div class="kpi"><div class="kv">${total}</div><div class="kl">Registros</div></div>
+      <div class="kpi"><div class="kv">RD$ ${costoTotal.toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="kl">Costo Total</div></div>
+    </div>`;
+  } else {
+    kpiHtml = `<div class="kpi-row">
+      <div class="kpi"><div class="kv">${total}</div><div class="kl">Total registros</div></div>
+    </div>`;
+  }
+
+  const tablaHtml = opciones.incTabla && cols.length > 0 ? `
+    <h3 class="sec-title">Detalle de Registros</h3>
+    <table>
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody || '<tr><td colspan="'+cols.length+'" class="empty">Sin registros</td></tr>'}</tbody>
+    </table>
+  ` : '';
+
+  const firmaHtml = opciones.incFirma ? `
+    <div class="firma-area" style="margin-top:32px;page-break-inside:avoid">
+      <h3 class="sec-title">Firmas y Aprobación</h3>
+      <div class="firma-grid">
+        <div class="firma-box">
+          <div class="firma-line"></div>
+          <div class="firma-label">Elaborado por</div>
+        </div>
+        <div class="firma-box">
+          <div class="firma-line"></div>
+          <div class="firma-label">Revisado por</div>
+        </div>
+        <div class="firma-box">
+          <div class="firma-line"></div>
+          <div class="firma-label">Aprobado por</div>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  const notasHtml = opciones.incNotas ? `
+    <div class="notas-area" style="margin-top:24px;page-break-inside:avoid">
+      <h3 class="sec-title">Observaciones</h3>
+      <div class="notas-box"></div>
+    </div>
+  ` : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>${titulo} — Eureka Fleet Manager</title>
+<style>
+  @page { size: A4 landscape; margin: 1.5cm 1.8cm; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  body{ font-family:Arial,Helvetica,sans-serif; font-size:10pt; color:#1a1a2e; background:#fff; }
+
+  /* ENCABEZADO */
+  .header{ background:#1a1a2e; color:#fff; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:6px; margin-bottom:14px; }
+  .header-left{ display:flex; flex-direction:column; }
+  .header-empresa{ font-size:7.5pt; color:#C9A84C; letter-spacing:.08em; text-transform:uppercase; }
+  .header-titulo{ font-size:16pt; font-weight:700; margin:2px 0; }
+  .header-sub{ font-size:7.5pt; color:#aaa; }
+  .header-right{ text-align:right; }
+  .header-fecha{ font-size:8pt; color:#C9A84C; font-weight:600; }
+  .header-hora{ font-size:7pt; color:#888; margin-top:2px; }
+  .header-logo{ font-size:9pt; color:#fff; font-weight:700; margin-top:4px; letter-spacing:.05em; }
+
+  /* KPIs */
+  .kpi-row{ display:flex; gap:12px; margin-bottom:14px; }
+  .kpi{ flex:1; background:#f8f8f8; border:1px solid #e5e5e5; border-radius:6px; padding:10px 14px; text-align:center; }
+  .kv{ font-size:14pt; font-weight:700; color:#1a1a2e; }
+  .kl{ font-size:7pt; color:#888; margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
+
+  /* SECCIÓN */
+  .sec-title{ font-size:9pt; font-weight:700; color:#C9A84C; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; border-bottom:1px solid #e8d9a0; padding-bottom:4px; }
+
+  /* TABLA */
+  table{ width:100%; border-collapse:collapse; font-size:8pt; }
+  thead tr{ background:#1a1a2e; color:#fff; }
+  thead th{ padding:7px 8px; text-align:left; font-weight:600; font-size:7.5pt; letter-spacing:.04em; }
+  tbody tr.even{ background:#fff; }
+  tbody tr.odd{ background:#f7f7f7; }
+  tbody td{ padding:5px 8px; border-bottom:1px solid #efefef; vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  .empty{ text-align:center; color:#999; font-style:italic; padding:20px; }
+
+  /* FIRMAS */
+  .firma-grid{ display:flex; gap:30px; margin-top:16px; }
+  .firma-box{ flex:1; text-align:center; }
+  .firma-line{ border-bottom:1.5px solid #1a1a2e; margin-bottom:6px; height:40px; }
+  .firma-label{ font-size:8pt; color:#555; }
+
+  /* NOTAS */
+  .notas-box{ border:1px solid #ddd; border-radius:4px; min-height:80px; margin-top:8px; }
+
+  /* FOOTER */
+  .footer{ margin-top:18px; border-top:1px solid #ddd; padding-top:8px; display:flex; justify-content:space-between; font-size:7pt; color:#999; }
+
+  @media print{
+    body{ print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .no-print{ display:none; }
+    table{ page-break-inside:auto; }
+    tr{ page-break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-left">
+      <div class="header-empresa">Almonte Ingeniería y Tecnología SRL</div>
+      <div class="header-titulo">${icono} ${titulo}</div>
+      <div class="header-sub">Eureka Fleet Manager · Informe generado automáticamente</div>
+    </div>
+    <div class="header-right">
+      <div class="header-fecha">${fecha}</div>
+      <div class="header-hora">${hora}</div>
+      <div class="header-logo">🚛 EUREKA</div>
+    </div>
+  </div>
+
+  ${kpiHtml}
+  ${tablaHtml}
+  ${firmaHtml}
+  ${notasHtml}
+
+  <div class="footer">
+    <span>Eureka Fleet Manager · Almonte Ingeniería y Tecnología SRL</span>
+    <span>Documento generado el ${fecha} a las ${hora} · Confidencial</span>
+  </div>
+
+<script>window.onload=function(){ window.print(); }<\/script>
+</body>
+</html>`;
+
+  const w = window.open('','_blank','width=1100,height=750');
+  if(!w){ toast('Activa las ventanas emergentes para generar el PDF','error'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
 function btnExport(modulo, titulo){
+  const cacheExpr = {
+    mecanica:'cache.mecanica', vehiculos:'cache.vehiculos', polizas:'cache.polizas',
+    reparaciones:'cache.reparaciones', pinchazos:'cache.pinchazos',
+    neumaticos:'cache.neumaticos', baterias:'cache.baterias',
+  }[modulo] || `cache.${modulo}`;
   return `<div style="display:flex;gap:6px">
-    <button class="btn btn-sm btn-outline" onclick="exportCSV(${modulo==='mecanica'?'cache.mecanica':modulo==='vehiculos'?'cache.vehiculos':modulo==='polizas'?'cache.polizas':modulo==='reparaciones'?'cache.reparaciones':modulo==='pinchazos'?'cache.pinchazos':'cache.neumaticos'},EXPORT_COLS.${modulo},'${titulo}')">
+    <button class="btn btn-sm btn-outline" onclick="exportCSV(${cacheExpr},EXPORT_COLS.${modulo},'${titulo}')">
       📥 CSV
     </button>
-    <button class="btn btn-sm btn-outline" onclick="printModulo('${titulo}')">🖨️ PDF</button>
+    <button class="btn btn-sm btn-outline" onclick="abrirModalInforme('${modulo}','${titulo}')">🖨️ PDF</button>
   </div>`;
 }
 
