@@ -5106,7 +5106,7 @@ async function startApp(user){
 
   let modulos = null; // null = todos
   try {
-    const {data} = await sb.from('perfiles').select('rol,nombre,email,modulos').eq('id', user.id).single();
+    const {data} = await sb.from('perfiles').select('rol,nombre,email').eq('id', user.id).single();
     if(data?.rol) APP_ROL = data.rol;
     modulos = data?.modulos ? (Array.isArray(data.modulos) ? data.modulos : JSON.parse(data.modulos)) : null;
     APP_USER = { id: user.id, email: user.email, nombre: data?.nombre || user.email.split('@')[0], rol: APP_ROL, modulos };
@@ -5236,6 +5236,22 @@ setInterval(async ()=>{
     if(error) goToLogin('Sesión expirada. Inicia sesión nuevamente.');
   }
 }, 8 * 60 * 1000);
+
+// Refresco al volver de segundo plano (móvil: intervalos se congelan)
+document.addEventListener('visibilitychange', async ()=>{
+  if(document.visibilityState !== 'visible') return;
+  const { data:{ session }, error } = await sb.auth.getSession();
+  if(error || !session){
+    goToLogin('Tu sesión expiró. Inicia sesión nuevamente.');
+    return;
+  }
+  const exp = session.expires_at || 0;
+  const now = Math.floor(Date.now()/1000);
+  if(exp - now < 900){
+    const { error: rErr } = await sb.auth.refreshSession();
+    if(rErr) goToLogin('Sesión expirada. Inicia sesión nuevamente.');
+  }
+});
 
 document.getElementById('login-pass').addEventListener('keydown', e=>{
   if(e.key==='Enter') doLogin();
