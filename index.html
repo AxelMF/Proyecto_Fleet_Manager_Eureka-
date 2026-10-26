@@ -449,8 +449,29 @@ tbody td{padding:11px 14px;color:var(--text)}
 // ─── CONFIG ───────────────────────────────────────────────
 const SB_URL  = 'https://nfyhuuryucdhkovugoue.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meWh1dXJ5dWNkaGtvdnVnb3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTQwMTYsImV4cCI6MjA5MzEzMDAxNn0.8C5zDPcRBB2rYhFuqErn7BaoNRpYiCHj_PnTEB-6SPs';
-const sb      = supabase.createClient(SB_URL, SB_KEY, {
-  auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: false }
+// Storage con fallback en memoria para iOS Safari (ITP bloquea localStorage)
+const _authStorage = (() => {
+  try {
+    localStorage.setItem('_sb_test', '1');
+    localStorage.removeItem('_sb_test');
+    return localStorage;
+  } catch(_) {
+    const mem = {};
+    return {
+      getItem:    k     => (k in mem ? mem[k] : null),
+      setItem:    (k,v) => { mem[k] = String(v); },
+      removeItem: k     => { delete mem[k]; },
+    };
+  }
+})();
+
+const sb = supabase.createClient(SB_URL, SB_KEY, {
+  auth: {
+    autoRefreshToken:  true,
+    persistSession:    true,
+    detectSessionInUrl: false,
+    storage: _authStorage,
+  }
 });
 
 // ─── ROL GLOBAL ───────────────────────────────────────────
