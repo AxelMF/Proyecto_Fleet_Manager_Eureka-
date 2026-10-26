@@ -449,20 +449,21 @@ tbody td{padding:11px 14px;color:var(--text)}
 // ─── CONFIG ───────────────────────────────────────────────
 const SB_URL  = 'https://nfyhuuryucdhkovugoue.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meWh1dXJ5dWNkaGtvdnVnb3VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1NTQwMTYsImV4cCI6MjA5MzEzMDAxNn0.8C5zDPcRBB2rYhFuqErn7BaoNRpYiCHj_PnTEB-6SPs';
-// Storage con fallback en memoria para iOS Safari (ITP bloquea localStorage)
+// Storage con fallback en memoria para iOS/Android con storage bloqueado.
+// Cada operación está en try/catch individual porque localStorage puede pasar
+// el test inicial pero fallar después con tokens grandes (SecurityError).
 const _authStorage = (() => {
-  try {
-    localStorage.setItem('_sb_test', '1');
-    localStorage.removeItem('_sb_test');
-    return localStorage;
-  } catch(_) {
-    const mem = {};
-    return {
-      getItem:    k     => (k in mem ? mem[k] : null),
-      setItem:    (k,v) => { mem[k] = String(v); },
-      removeItem: k     => { delete mem[k]; },
-    };
-  }
+  const mem = {};
+  const memStore = {
+    getItem:    k     => (k in mem ? mem[k] : null),
+    setItem:    (k,v) => { mem[k] = String(v); },
+    removeItem: k     => { delete mem[k]; },
+  };
+  return {
+    getItem:    k     => { try{ return localStorage.getItem(k);    } catch(_){ return memStore.getItem(k);    } },
+    setItem:    (k,v) => { try{ localStorage.setItem(k,v);         } catch(_){ memStore.setItem(k,v);         } },
+    removeItem: k     => { try{ localStorage.removeItem(k);        } catch(_){ memStore.removeItem(k);        } },
+  };
 })();
 
 const sb = supabase.createClient(SB_URL, SB_KEY, {
@@ -5222,19 +5223,21 @@ document.addEventListener('visibilitychange', async ()=>{
 });
 
 (async function init(){
-  const { data:{ session } } = await sb.auth.getSession();
-  if(session){
-    // Verificar que el token no esté expirado antes de arrancar
+  try {
+    const { data, error } = await sb.auth.getSession();
+    const session = data?.session;
+    if(error || !session) return; // sin sesión → pantalla de login
     const exp = session.expires_at || 0;
     const now = Math.floor(Date.now()/1000);
     if(exp - now < 60){
-      // Menos de 1 min — refrescar primero
-      const { data, error } = await sb.auth.refreshSession();
-      if(error || !data.session){ return; } // quedará en login
-      startApp(data.session.user);
+      const { data: d2, error: e2 } = await sb.auth.refreshSession();
+      if(e2 || !d2?.session) return;
+      startApp(d2.session.user);
     } else {
       startApp(session.user);
     }
+  } catch(_){
+    // Storage bloqueado u otro error crítico → mostrar login
   }
 })();
 
