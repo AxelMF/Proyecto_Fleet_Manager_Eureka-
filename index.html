@@ -3747,11 +3747,15 @@ ${tab==='partes' ? `
   };
 };
 
+// Helpers seguros para localStorage (falla silenciosamente en móvil con ITP)
+function lsGet(key){ try{ return JSON.parse(localStorage.getItem(key)||'null'); }catch(_){ return null; } }
+function lsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch(_){} }
+
 // ─── COMBUSTIBLE (localStorage) ───────────────────────────
 moduleLoaders.combustible = function(){
   const el  = document.getElementById('mod-combustible');
   const key = 'fleet_combustible';
-  const lista = JSON.parse(localStorage.getItem(key)||'[]');
+  const lista = lsGet(key) || [];
   const total = lista.reduce((s,r)=>s+(parseFloat(r.coste)||0),0);
   const totalLitros = lista.reduce((s,r)=>s+(parseFloat(r.litros)||0),0);
   const hoyMes = new Date().toISOString().slice(0,7);
@@ -3828,7 +3832,7 @@ moduleLoaders.combustible = function(){
   window.saveComb = function(){
     const litros=parseFloat(document.getElementById('cb-litros').value)||0;
     const precio=parseFloat(document.getElementById('cb-precio').value)||0;
-    const lista2=JSON.parse(localStorage.getItem(key)||'[]');
+    const lista2 = lsGet(key) || [];
     lista2.push({
       vehiculo:document.getElementById('cb-veh').value,
       fecha:   document.getElementById('cb-fecha').value,
@@ -3837,14 +3841,14 @@ moduleLoaders.combustible = function(){
       km:      document.getElementById('cb-km').value,
       estacion:document.getElementById('cb-est').value.trim(),
     });
-    localStorage.setItem(key,JSON.stringify(lista2));
+    lsSet(key,lista2);
     closeModalForce(); toast('Carga registrada','success');
     moduleLoaders.combustible();
   };
   window.deleteComb = function(i){
     if(!confirm('¿Eliminar?')) return;
-    const lista2=JSON.parse(localStorage.getItem(key)||'[]');
-    lista2.splice(i,1); localStorage.setItem(key,JSON.stringify(lista2));
+    const lista2 = lsGet(key) || [];
+    lista2.splice(i,1); lsSet(key,lista2);
     toast('Eliminado','success'); moduleLoaders.combustible();
   };
 };
