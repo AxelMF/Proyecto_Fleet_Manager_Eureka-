@@ -496,6 +496,18 @@ tbody td{padding:11px 14px;color:var(--text)}
       <div class="nav-item" onclick="nav('neumaticos')"><span class="icon">⭕</span>Neumáticos</div>
       <div class="nav-item" onclick="nav('baterias')"><span class="icon">⚡</span>Baterías</div>
 
+      <div class="nav-section">🚛 Mini Trucks</div>
+      <div class="nav-item" onclick="nav('mt-dashboard')"><span class="icon">📊</span>Dashboard MT</div>
+      <div class="nav-item" onclick="nav('mt-unidades')"><span class="icon">🚛</span>Unidades MT</div>
+      <div class="nav-item" onclick="nav('mt-conductores')"><span class="icon">🪪</span>Conductores MT</div>
+      <div class="nav-item" onclick="nav('mt-combustible')"><span class="icon">⛽</span>Combustible MT</div>
+      <div class="nav-item" onclick="nav('mt-kilometraje')"><span class="icon">🛣️</span>Kilometraje</div>
+      <div class="nav-item" onclick="nav('mt-herramientas')"><span class="icon">🔧</span>Herramientas</div>
+      <div class="nav-item" onclick="nav('mt-asignaciones')"><span class="icon">📎</span>Asignaciones</div>
+      <div class="nav-item" onclick="nav('mt-reparaciones')"><span class="icon">🔨</span>Reparaciones MT</div>
+      <div class="nav-item" onclick="nav('mt-polizas')"><span class="icon">📋</span>Pólizas MT</div>
+      <div class="nav-item" onclick="nav('mt-novedades')"><span class="icon">🪟</span>Novedades MT</div>
+
       <div class="nav-section">Administración</div>
       <div class="nav-item" onclick="nav('compras')" id="nav-compras"><span class="icon">🛒</span>Compras & Facturas <span id="badge-compras" style="display:none;background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
       <div class="nav-item" onclick="nav('gastos')" id="nav-gastos"><span class="icon">📄</span>Facturas Personales <span id="badge-gastos" style="display:none;background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
@@ -534,6 +546,16 @@ tbody td{padding:11px 14px;color:var(--text)}
     <div id="mod-exec-dash" class="module"><div class="empty-state">Cargando dashboard ejecutivo…</div></div>
     <div id="mod-usuarios" class="module"><div class="empty-state">Cargando usuarios…</div></div>
     <div id="mod-portal-mec" class="module"><div class="empty-state">Cargando portal…</div></div>
+    <div id="mod-mt-dashboard" class="module"><div class="empty-state">Cargando Dashboard MT…</div></div>
+    <div id="mod-mt-unidades" class="module"><div class="empty-state">Cargando unidades MT…</div></div>
+    <div id="mod-mt-conductores" class="module"><div class="empty-state">Cargando conductores MT…</div></div>
+    <div id="mod-mt-combustible" class="module"><div class="empty-state">Cargando combustible MT…</div></div>
+    <div id="mod-mt-kilometraje" class="module"><div class="empty-state">Cargando kilometraje…</div></div>
+    <div id="mod-mt-herramientas" class="module"><div class="empty-state">Cargando herramientas…</div></div>
+    <div id="mod-mt-asignaciones" class="module"><div class="empty-state">Cargando asignaciones…</div></div>
+    <div id="mod-mt-reparaciones" class="module"><div class="empty-state">Cargando reparaciones MT…</div></div>
+    <div id="mod-mt-polizas" class="module"><div class="empty-state">Cargando pólizas MT…</div></div>
+    <div id="mod-mt-novedades" class="module"><div class="empty-state">Cargando novedades MT…</div></div>
   </div>
 </div>
 
@@ -608,6 +630,8 @@ const cache = {
   polizas: null, pinchazos: null, reparaciones: null,
   neumaticos: null, mecanica: null,
   compras_ocs: null, compras_facts: null, compras_provs: null,
+  mt_unidades: null, mt_conductores: null, mt_combustible: null,
+  mt_kilometraje: null, mt_herramientas: null, mt_asignaciones: null,
   clear(key){ if(key) this[key]=null; else Object.keys(this).filter(k=>typeof this[k]!=='function').forEach(k=>this[k]=null); }
 };
 
@@ -4938,6 +4962,32 @@ const EXPORT_COLS = {
     {key:'voltaje',label:'Voltaje'},{key:'precio',label:'Precio'},
     {key:'suplidor',label:'Suplidor'},{key:'supervisor',label:'Supervisor'},
   ],
+  'mt-unidades':[
+    {key:'ficha',label:'Ficha'},{key:'placa',label:'Placa'},
+    {key:'marca',label:'Marca'},{key:'modelo',label:'Modelo'},
+    {key:'anio',label:'Año'},{key:'color',label:'Color'},
+    {key:'conductor',label:'Conductor'},{key:'estado',label:'Estado'},
+  ],
+  'mt-conductores':[
+    {key:'nombre',label:'Nombre'},{key:'cedula',label:'Cédula'},
+    {key:'licencia',label:'Licencia'},{key:'categoria_lic',label:'Categoría'},
+    {key:'telefono',label:'Teléfono'},{key:'activo',label:'Activo'},
+  ],
+  'mt-combustible':[
+    {key:'fecha',label:'Fecha'},{key:'km',label:'KM'},
+    {key:'litros',label:'Litros'},{key:'precio_litro',label:'Precio/L'},
+    {key:'total',label:'Total'},{key:'proveedor',label:'Proveedor'},
+  ],
+  'mt-kilometraje':[
+    {key:'fecha',label:'Fecha'},{key:'km_anterior',label:'KM Anterior'},
+    {key:'km_actual',label:'KM Actual'},{key:'notas',label:'Notas'},
+  ],
+  'mt-herramientas':[
+    {key:'nombre',label:'Nombre'},{key:'codigo',label:'Código'},
+    {key:'categoria',label:'Categoría'},{key:'marca',label:'Marca'},
+    {key:'estado',label:'Estado'},{key:'cantidad',label:'Cantidad'},
+    {key:'precio',label:'Precio'},{key:'proveedor',label:'Proveedor'},
+  ],
 };
 
 // ── SISTEMA DE INFORMES PDF ────────────────────────────────────────────────
@@ -5241,6 +5291,803 @@ function graficaMensualMec(data){
   </div>
 </div>`;
 }
+
+// ══════════════════════════════════════════════════════════
+// MINI TRUCKS — 10 SUB-MÓDULOS
+// ══════════════════════════════════════════════════════════
+
+// ── 1. DASHBOARD MT ──────────────────────────────────────
+moduleLoaders['mt-dashboard'] = async function(){
+  const el = document.getElementById('mod-mt-dashboard');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const [rU, rC, rComb, rKm, rH] = await Promise.all([
+      sb.from('vehiculos').select('id,estado').eq('tipo_unidad','mini_truck'),
+      sb.from('mt_conductores').select('id,activo'),
+      sb.from('mt_combustible_registros').select('litros,total,fecha'),
+      sb.from('mt_kilometraje').select('km_actual,km_anterior,vehiculo_id').order('fecha',{ascending:false}),
+      sb.from('mt_herramientas').select('id,estado'),
+    ]);
+    const unidades = rU.data||[];
+    const conductores = rC.data||[];
+    const comb = rComb.data||[];
+    const km = rKm.data||[];
+    const herr = rH.data||[];
+
+    const activas = unidades.filter(u=>u.estado==='activo').length;
+    const condActivos = conductores.filter(c=>c.activo).length;
+    const totalLitros = comb.reduce((s,r)=>s+Number(r.litros||0),0);
+    const totalComb = comb.reduce((s,r)=>s+Number(r.total||0),0);
+    const herrDisp = herr.filter(h=>h.estado==='Disponible').length;
+    const herrAsig = herr.filter(h=>h.estado==='Asignada').length;
+
+    // km acumulado últimos 30 días
+    const hace30 = new Date(); hace30.setDate(hace30.getDate()-30);
+    const combMes = comb.filter(r=>r.fecha && new Date(r.fecha)>=hace30);
+    const litrosMes = combMes.reduce((s,r)=>s+Number(r.litros||0),0);
+
+    el.innerHTML = `
+<div class="module-header"><h2>📊 Dashboard Mini Trucks</h2></div>
+<div class="kpi-grid">
+  <div class="kpi-card" style="--kpi-color:#f0a500">
+    <div class="kpi-val">${unidades.length}</div>
+    <div class="kpi-label">Total Unidades MT</div>
+    <div class="kpi-sub">${activas} activas</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#22c55e">
+    <div class="kpi-val">${condActivos}</div>
+    <div class="kpi-label">Conductores Activos</div>
+    <div class="kpi-sub">${conductores.length} registrados</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#3b82f6">
+    <div class="kpi-val">${totalLitros.toFixed(0)} L</div>
+    <div class="kpi-label">Combustible Total</div>
+    <div class="kpi-sub">${litrosMes.toFixed(0)} L este mes · ${fmtMoney(totalComb)}</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#a855f7">
+    <div class="kpi-val">${herr.length}</div>
+    <div class="kpi-label">Herramientas</div>
+    <div class="kpi-sub">${herrDisp} disponibles · ${herrAsig} asignadas</div>
+  </div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <h4 style="font-size:.85rem;color:var(--text2);margin-bottom:12px">Estado de Unidades MT</h4>
+    ${['activo','inactivo','taller'].map(est=>{
+      const n = unidades.filter(u=>u.estado===est).length;
+      const col = est==='activo'?'#22c55e':est==='taller'?'#f59e0b':'#ef4444';
+      const pct = unidades.length ? Math.round(n/unidades.length*100) : 0;
+      return `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
+          <span style="text-transform:capitalize">${est}</span><span style="color:${col}">${n}</span>
+        </div>
+        <div style="background:var(--bg3);border-radius:4px;height:6px">
+          <div style="background:${col};width:${pct}%;height:6px;border-radius:4px"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <h4 style="font-size:.85rem;color:var(--text2);margin-bottom:12px">Accesos Rápidos</h4>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-sm" onclick="nav('mt-unidades')">🚛 Ver Unidades MT</button>
+      <button class="btn btn-sm" onclick="nav('mt-combustible')">⛽ Registrar Combustible</button>
+      <button class="btn btn-sm" onclick="nav('mt-kilometraje')">🛣️ Registrar KM</button>
+      <button class="btn btn-sm" onclick="nav('mt-herramientas')">🔧 Inventario Herramientas</button>
+    </div>
+  </div>
+</div>`;
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 2. UNIDADES MT ────────────────────────────────────────
+moduleLoaders['mt-unidades'] = async function(){
+  const el = document.getElementById('mod-mt-unidades');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('vehiculos')
+      .select('*,campamentos(nombre),supervisores(nombre)')
+      .eq('tipo_unidad','mini_truck')
+      .order('created_at',{ascending:false});
+    if(error) throw error;
+    cache.mt_unidades = data;
+    const rows = data||[];
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🚛 Unidades Mini Trucks</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtUnidad()">+ Nueva Unidad MT</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('mt-unidades','Unidades_MT')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Ficha</th><th>Placa</th><th>Marca/Modelo</th><th>Año</th>
+    <th>Campamento</th><th>Conductor</th><th>Estado</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin unidades MT registradas</td></tr>`:
+    rows.map(r=>{
+      const est = r.estado||'activo';
+      const col = est==='activo'?'#22c55e':est==='taller'?'#f59e0b':'#ef4444';
+      return `<tr>
+        <td><b>${r.ficha||'—'}</b></td>
+        <td>${r.placa||'—'}</td>
+        <td>${r.marca||''} ${r.modelo||''}</td>
+        <td>${r.anio||'—'}</td>
+        <td>${r.campamentos?.nombre||'—'}</td>
+        <td>${r.conductor||'—'}</td>
+        <td><span style="color:${col};font-weight:600;text-transform:capitalize">${est}</span></td>
+        <td>${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="editarMtUnidad(${r.id})">✏️</button>
+             <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtUnidad(${r.id})">🗑</button>`:'—'}
+        </td>
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtUnidad = function(id){
+      const u = id ? (cache.mt_unidades||[]).find(x=>x.id===id) : {};
+      openModal('mt-unidad', id?'Editar Unidad MT':'Nueva Unidad MT', `
+        <div class="form-grid">
+          <label>Ficha *<input id="mtu-ficha" value="${u?.ficha||''}" placeholder="EJ-001"></label>
+          <label>Placa<input id="mtu-placa" value="${u?.placa||''}"></label>
+          <label>Marca<input id="mtu-marca" value="${u?.marca||''}"></label>
+          <label>Modelo<input id="mtu-modelo" value="${u?.modelo||''}"></label>
+          <label>Año<input id="mtu-anio" value="${u?.anio||''}"></label>
+          <label>Color<input id="mtu-color" value="${u?.color||''}"></label>
+          <label>Motor<input id="mtu-motor" value="${u?.motor||''}"></label>
+          <label>Chasis<input id="mtu-chasis" value="${u?.chasis||''}"></label>
+          <label>Conductor<input id="mtu-conductor" value="${u?.conductor||''}"></label>
+          <label>Estado<select id="mtu-estado">
+            ${['activo','inactivo','taller'].map(s=>`<option${(u?.estado||'activo')===s?' selected':''}>${s}</option>`).join('')}
+          </select></label>
+          <label style="grid-column:span 2">Nota<textarea id="mtu-nota" rows="2">${u?.nota||''}</textarea></label>
+        </div>`,
+        [{label:'Guardar',action:async()=>{
+          const payload = {
+            ficha:   document.getElementById('mtu-ficha').value.trim(),
+            placa:   document.getElementById('mtu-placa').value.trim(),
+            marca:   document.getElementById('mtu-marca').value.trim(),
+            modelo:  document.getElementById('mtu-modelo').value.trim(),
+            anio:    document.getElementById('mtu-anio').value.trim(),
+            color:   document.getElementById('mtu-color').value.trim(),
+            motor:   document.getElementById('mtu-motor').value.trim(),
+            chasis:  document.getElementById('mtu-chasis').value.trim(),
+            conductor: document.getElementById('mtu-conductor').value.trim(),
+            estado:  document.getElementById('mtu-estado').value,
+            nota:    document.getElementById('mtu-nota').value.trim(),
+            tipo_unidad: 'mini_truck',
+          };
+          if(!payload.ficha){ toast('Ficha requerida','error'); return; }
+          let err;
+          if(id){ ({error:err}=await sb.from('vehiculos').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('vehiculos').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.mt_unidades=null; closeModal(); toast('Unidad MT guardada','success');
+          moduleLoaders['mt-unidades']();
+        }}]);
+    };
+    window.editarMtUnidad = (id) => abrirFormMtUnidad(id);
+    window.eliminarMtUnidad = async function(id){
+      if(!confirm('¿Eliminar esta unidad MT?')) return;
+      const {error} = await sb.from('vehiculos').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_unidades=null; toast('Unidad eliminada','success'); moduleLoaders['mt-unidades']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 3. CONDUCTORES MT ─────────────────────────────────────
+moduleLoaders['mt-conductores'] = async function(){
+  const el = document.getElementById('mod-mt-conductores');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('mt_conductores')
+      .select('*,campamentos(nombre)').order('nombre');
+    if(error) throw error;
+    cache.mt_conductores = data;
+    const rows = data||[];
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🪪 Conductores Mini Trucks</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtConductor()">+ Nuevo Conductor</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('mt-conductores','Conductores_MT')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Nombre</th><th>Cédula</th><th>Licencia</th><th>Categoría</th>
+    <th>Teléfono</th><th>Campamento</th><th>Estado</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin conductores registrados</td></tr>`:
+    rows.map(r=>`<tr>
+      <td><b>${r.nombre}</b></td>
+      <td>${r.cedula||'—'}</td>
+      <td>${r.licencia||'—'}</td>
+      <td>${r.categoria_lic||'—'}</td>
+      <td>${r.telefono||'—'}</td>
+      <td>${r.campamentos?.nombre||'—'}</td>
+      <td><span style="color:${r.activo?'#22c55e':'#ef4444'};font-weight:600">${r.activo?'Activo':'Inactivo'}</span></td>
+      <td>${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="editarMtConductor(${r.id})">✏️</button>
+           <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtConductor(${r.id})">🗑</button>`:'—'}
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtConductor = async function(id){
+      const c = id ? (cache.mt_conductores||[]).find(x=>x.id===id) : {};
+      const {data:camps} = await sb.from('campamentos').select('id,nombre').order('nombre');
+      openModal('mt-cond', id?'Editar Conductor':'Nuevo Conductor MT', `
+        <div class="form-grid">
+          <label>Nombre *<input id="mtc-nombre" value="${c?.nombre||''}"></label>
+          <label>Cédula<input id="mtc-cedula" value="${c?.cedula||''}"></label>
+          <label>N° Licencia<input id="mtc-lic" value="${c?.licencia||''}"></label>
+          <label>Categoría Lic.<input id="mtc-catlic" value="${c?.categoria_lic||''}"></label>
+          <label>Teléfono<input id="mtc-tel" value="${c?.telefono||''}"></label>
+          <label>Campamento<select id="mtc-camp">
+            <option value="">— Sin campamento —</option>
+            ${(camps||[]).map(x=>`<option value="${x.id}"${c?.campamento_id===x.id?' selected':''}>${x.nombre}</option>`).join('')}
+          </select></label>
+          <label>Estado<select id="mtc-activo">
+            <option value="true"${c?.activo!==false?' selected':''}>Activo</option>
+            <option value="false"${c?.activo===false?' selected':''}>Inactivo</option>
+          </select></label>
+          <label>Notas<textarea id="mtc-notas" rows="2">${c?.notas||''}</textarea></label>
+        </div>`,
+        [{label:'Guardar',action:async()=>{
+          const payload = {
+            nombre:       document.getElementById('mtc-nombre').value.trim(),
+            cedula:       document.getElementById('mtc-cedula').value.trim()||null,
+            licencia:     document.getElementById('mtc-lic').value.trim()||null,
+            categoria_lic:document.getElementById('mtc-catlic').value.trim()||null,
+            telefono:     document.getElementById('mtc-tel').value.trim()||null,
+            campamento_id:document.getElementById('mtc-camp').value||null,
+            activo:       document.getElementById('mtc-activo').value==='true',
+            notas:        document.getElementById('mtc-notas').value.trim()||null,
+          };
+          if(!payload.nombre){ toast('Nombre requerido','error'); return; }
+          let err;
+          if(id){ ({error:err}=await sb.from('mt_conductores').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('mt_conductores').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.mt_conductores=null; closeModal(); toast('Conductor guardado','success');
+          moduleLoaders['mt-conductores']();
+        }}]);
+    };
+    window.editarMtConductor = (id) => abrirFormMtConductor(id);
+    window.eliminarMtConductor = async function(id){
+      if(!confirm('¿Eliminar este conductor?')) return;
+      const {error} = await sb.from('mt_conductores').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_conductores=null; toast('Conductor eliminado','success'); moduleLoaders['mt-conductores']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 4. COMBUSTIBLE MT ─────────────────────────────────────
+moduleLoaders['mt-combustible'] = async function(){
+  const el = document.getElementById('mod-mt-combustible');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('mt_combustible_registros')
+      .select('*,vehiculos(ficha,placa),mt_conductores(nombre)')
+      .order('fecha',{ascending:false});
+    if(error) throw error;
+    cache.mt_combustible = data;
+    const rows = data||[];
+    const totalL = rows.reduce((s,r)=>s+Number(r.litros||0),0);
+    const totalM = rows.reduce((s,r)=>s+Number(r.total||0),0);
+    el.innerHTML = `
+<div class="module-header">
+  <h2>⛽ Combustible Mini Trucks</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtComb()">+ Registrar Carga</button>`:''}
+</div>
+<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+  <div class="kpi-card" style="--kpi-color:#3b82f6">
+    <div class="kpi-val">${rows.length}</div><div class="kpi-label">Registros</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#f0a500">
+    <div class="kpi-val">${totalL.toFixed(1)} L</div><div class="kpi-label">Litros Total</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#22c55e">
+    <div class="kpi-val">${fmtMoney(totalM)}</div><div class="kpi-label">Gasto Total</div>
+  </div>
+</div>
+<div style="margin-bottom:12px">${btnExport('mt-combustible','Combustible_MT')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Fecha</th><th>Unidad</th><th>Conductor</th><th>KM</th>
+    <th>Litros</th><th>Precio/L</th><th>Total</th><th>Proveedor</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text2)">Sin registros de combustible</td></tr>`:
+    rows.map(r=>`<tr>
+      <td>${r.fecha}</td>
+      <td>${r.vehiculos?.ficha||'—'}</td>
+      <td>${r.mt_conductores?.nombre||'—'}</td>
+      <td>${r.km||'—'}</td>
+      <td>${Number(r.litros||0).toFixed(1)} L</td>
+      <td>${fmtMoney(r.precio_litro)}</td>
+      <td><b>${fmtMoney(r.total)}</b></td>
+      <td>${r.proveedor||'—'}</td>
+      <td>${!esViewer()?`<button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtComb('${r.id}')">🗑</button>`:'—'}</td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtComb = async function(){
+      const [{data:unidades},{data:conds}] = await Promise.all([
+        sb.from('vehiculos').select('id,ficha,placa').eq('tipo_unidad','mini_truck').order('ficha'),
+        sb.from('mt_conductores').select('id,nombre').eq('activo',true).order('nombre'),
+      ]);
+      openModal('mt-comb','Registrar Combustible MT',`
+        <div class="form-grid">
+          <label>Fecha *<input type="date" id="mtcb-fecha" value="${new Date().toISOString().slice(0,10)}"></label>
+          <label>Unidad MT<select id="mtcb-vid">
+            <option value="">— Seleccionar —</option>
+            ${(unidades||[]).map(u=>`<option value="${u.id}">${u.ficha} ${u.placa?'('+u.placa+')':''}</option>`).join('')}
+          </select></label>
+          <label>Conductor<select id="mtcb-cid">
+            <option value="">— Seleccionar —</option>
+            ${(conds||[]).map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}
+          </select></label>
+          <label>KM Actual<input type="number" id="mtcb-km" min="0"></label>
+          <label>Litros *<input type="number" id="mtcb-litros" min="0" step="0.01"></label>
+          <label>Precio por Litro *<input type="number" id="mtcb-precio" min="0" step="0.01"></label>
+          <label>Proveedor<input id="mtcb-prov" placeholder="Gasolinera…"></label>
+          <label style="grid-column:span 2">Notas<textarea id="mtcb-notas" rows="2"></textarea></label>
+        </div>`,
+        [{label:'Guardar',action:async()=>{
+          const litros = Number(document.getElementById('mtcb-litros').value);
+          const precio = Number(document.getElementById('mtcb-precio').value);
+          if(!litros||!precio){ toast('Litros y precio requeridos','error'); return; }
+          const payload = {
+            fecha:        document.getElementById('mtcb-fecha').value,
+            vehiculo_id:  document.getElementById('mtcb-vid').value||null,
+            conductor_id: document.getElementById('mtcb-cid').value||null,
+            km:           Number(document.getElementById('mtcb-km').value)||null,
+            litros, precio_litro: precio,
+            proveedor:    document.getElementById('mtcb-prov').value.trim()||null,
+            notas:        document.getElementById('mtcb-notas').value.trim()||null,
+          };
+          const {error} = await sb.from('mt_combustible_registros').insert(payload);
+          if(error){ toast('Error: '+error.message,'error'); return; }
+          cache.mt_combustible=null; closeModal(); toast('Carga registrada','success');
+          moduleLoaders['mt-combustible']();
+        }}]);
+    };
+    window.eliminarMtComb = async function(id){
+      if(!confirm('¿Eliminar registro?')) return;
+      const {error} = await sb.from('mt_combustible_registros').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_combustible=null; toast('Eliminado','success'); moduleLoaders['mt-combustible']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 5. KILOMETRAJE MT ─────────────────────────────────────
+moduleLoaders['mt-kilometraje'] = async function(){
+  const el = document.getElementById('mod-mt-kilometraje');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('mt_kilometraje')
+      .select('*,vehiculos(ficha,placa),mt_conductores(nombre)')
+      .order('fecha',{ascending:false});
+    if(error) throw error;
+    cache.mt_kilometraje = data;
+    const rows = data||[];
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🛣️ Kilometraje Mini Trucks</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtKm()">+ Registrar KM</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('mt-kilometraje','Kilometraje_MT')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Fecha</th><th>Unidad</th><th>Conductor</th>
+    <th>KM Anterior</th><th>KM Actual</th><th>Recorrido</th><th>Notas</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin registros de kilometraje</td></tr>`:
+    rows.map(r=>{
+      const rec = (r.km_actual||0)-(r.km_anterior||0);
+      return `<tr>
+        <td>${r.fecha}</td>
+        <td>${r.vehiculos?.ficha||'—'}</td>
+        <td>${r.mt_conductores?.nombre||'—'}</td>
+        <td>${r.km_anterior?.toLocaleString()||'—'}</td>
+        <td><b>${r.km_actual?.toLocaleString()||'—'}</b></td>
+        <td style="color:${rec>0?'#22c55e':'var(--text2)'}">${rec>0?'+'+rec.toLocaleString():rec.toLocaleString()} km</td>
+        <td>${r.notas||'—'}</td>
+        <td>${!esViewer()?`<button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtKm('${r.id}')">🗑</button>`:'—'}</td>
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtKm = async function(){
+      const [{data:unidades},{data:conds}] = await Promise.all([
+        sb.from('vehiculos').select('id,ficha,placa').eq('tipo_unidad','mini_truck').order('ficha'),
+        sb.from('mt_conductores').select('id,nombre').eq('activo',true).order('nombre'),
+      ]);
+      openModal('mt-km','Registrar Kilometraje MT',`
+        <div class="form-grid">
+          <label>Fecha *<input type="date" id="mtk-fecha" value="${new Date().toISOString().slice(0,10)}"></label>
+          <label>Unidad MT *<select id="mtk-vid">
+            <option value="">— Seleccionar —</option>
+            ${(unidades||[]).map(u=>`<option value="${u.id}">${u.ficha} ${u.placa?'('+u.placa+')':''}</option>`).join('')}
+          </select></label>
+          <label>Conductor<select id="mtk-cid">
+            <option value="">— Seleccionar —</option>
+            ${(conds||[]).map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}
+          </select></label>
+          <label>KM Anterior<input type="number" id="mtk-ant" min="0"></label>
+          <label>KM Actual *<input type="number" id="mtk-act" min="0"></label>
+          <label style="grid-column:span 2">Notas<textarea id="mtk-notas" rows="2"></textarea></label>
+        </div>`,
+        [{label:'Guardar',action:async()=>{
+          const km_actual = Number(document.getElementById('mtk-act').value);
+          const vid = document.getElementById('mtk-vid').value;
+          if(!km_actual||!vid){ toast('Unidad y KM actual requeridos','error'); return; }
+          const payload = {
+            fecha:        document.getElementById('mtk-fecha').value,
+            vehiculo_id:  vid,
+            conductor_id: document.getElementById('mtk-cid').value||null,
+            km_anterior:  Number(document.getElementById('mtk-ant').value)||null,
+            km_actual,
+            notas:        document.getElementById('mtk-notas').value.trim()||null,
+          };
+          const {error} = await sb.from('mt_kilometraje').insert(payload);
+          if(error){ toast('Error: '+error.message,'error'); return; }
+          cache.mt_kilometraje=null; closeModal(); toast('KM registrado','success');
+          moduleLoaders['mt-kilometraje']();
+        }}]);
+    };
+    window.eliminarMtKm = async function(id){
+      if(!confirm('¿Eliminar registro?')) return;
+      const {error} = await sb.from('mt_kilometraje').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_kilometraje=null; toast('Eliminado','success'); moduleLoaders['mt-kilometraje']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 6. HERRAMIENTAS MT ────────────────────────────────────
+moduleLoaders['mt-herramientas'] = async function(){
+  const el = document.getElementById('mod-mt-herramientas');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('mt_herramientas').select('*').order('nombre');
+    if(error) throw error;
+    cache.mt_herramientas = data;
+    const rows = data||[];
+    const stColors = {Disponible:'#22c55e',Asignada:'#3b82f6','En reparación':'#f59e0b',Baja:'#ef4444'};
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🔧 Herramientas y Equipos MT</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtHerr()">+ Nueva Herramienta</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('mt-herramientas','Herramientas_MT')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Nombre</th><th>Código</th><th>Categoría</th><th>Marca</th>
+    <th>Serial</th><th>Estado</th><th>Cant.</th><th>Precio</th><th>Proveedor</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text2)">Sin herramientas registradas</td></tr>`:
+    rows.map(r=>`<tr>
+      <td><b>${r.nombre}</b></td>
+      <td>${r.codigo||'—'}</td>
+      <td>${r.categoria||'—'}</td>
+      <td>${r.marca||'—'}</td>
+      <td>${r.serial||'—'}</td>
+      <td><span style="color:${stColors[r.estado]||'var(--text)'};font-weight:600">${r.estado}</span></td>
+      <td>${r.cantidad||1}</td>
+      <td>${r.precio?fmtMoney(r.precio):'—'}</td>
+      <td>${r.proveedor||'—'}</td>
+      <td>${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="editarMtHerr('${r.id}')">✏️</button>
+           <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtHerr('${r.id}')">🗑</button>`:'—'}
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtHerr = function(id){
+      const h = id ? (cache.mt_herramientas||[]).find(x=>x.id===id) : {};
+      openModal('mt-herr', id?'Editar Herramienta':'Nueva Herramienta MT', `
+        <div class="form-grid">
+          <label>Nombre *<input id="mth-nombre" value="${h?.nombre||''}"></label>
+          <label>Código<input id="mth-codigo" value="${h?.codigo||''}"></label>
+          <label>Categoría<input id="mth-cat" value="${h?.categoria||''}" placeholder="Ej: Eléctrico, Mecánico…"></label>
+          <label>Marca<input id="mth-marca" value="${h?.marca||''}"></label>
+          <label>Modelo<input id="mth-modelo" value="${h?.modelo||''}"></label>
+          <label>Serial<input id="mth-serial" value="${h?.serial||''}"></label>
+          <label>Estado<select id="mth-estado">
+            ${['Disponible','Asignada','En reparación','Baja'].map(s=>`<option${(h?.estado||'Disponible')===s?' selected':''}>${s}</option>`).join('')}
+          </select></label>
+          <label>Cantidad<input type="number" id="mth-cant" value="${h?.cantidad||1}" min="1"></label>
+          <label>Precio<input type="number" id="mth-precio" value="${h?.precio||''}" min="0" step="0.01"></label>
+          <label>Proveedor<input id="mth-prov" value="${h?.proveedor||''}"></label>
+          <label>Fecha Compra<input type="date" id="mth-fcomp" value="${h?.fecha_compra||''}"></label>
+          <label style="grid-column:span 2">Notas<textarea id="mth-notas" rows="2">${h?.notas||''}</textarea></label>
+        </div>`,
+        [{label:'Guardar',action:async()=>{
+          const payload = {
+            nombre:       document.getElementById('mth-nombre').value.trim(),
+            codigo:       document.getElementById('mth-codigo').value.trim()||null,
+            categoria:    document.getElementById('mth-cat').value.trim()||null,
+            marca:        document.getElementById('mth-marca').value.trim()||null,
+            modelo:       document.getElementById('mth-modelo').value.trim()||null,
+            serial:       document.getElementById('mth-serial').value.trim()||null,
+            estado:       document.getElementById('mth-estado').value,
+            cantidad:     Number(document.getElementById('mth-cant').value)||1,
+            precio:       Number(document.getElementById('mth-precio').value)||null,
+            proveedor:    document.getElementById('mth-prov').value.trim()||null,
+            fecha_compra: document.getElementById('mth-fcomp').value||null,
+            notas:        document.getElementById('mth-notas').value.trim()||null,
+          };
+          if(!payload.nombre){ toast('Nombre requerido','error'); return; }
+          let err;
+          if(id){ ({error:err}=await sb.from('mt_herramientas').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('mt_herramientas').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.mt_herramientas=null; closeModal(); toast('Herramienta guardada','success');
+          moduleLoaders['mt-herramientas']();
+        }}]);
+    };
+    window.editarMtHerr = (id) => abrirFormMtHerr(id);
+    window.eliminarMtHerr = async function(id){
+      if(!confirm('¿Eliminar herramienta?')) return;
+      const {error} = await sb.from('mt_herramientas').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_herramientas=null; toast('Eliminada','success'); moduleLoaders['mt-herramientas']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 7. ASIGNACIONES MT ────────────────────────────────────
+moduleLoaders['mt-asignaciones'] = async function(){
+  const el = document.getElementById('mod-mt-asignaciones');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('mt_herramientas_asignaciones')
+      .select('*,mt_herramientas(nombre,codigo),vehiculos(ficha),mt_conductores(nombre)')
+      .order('fecha_asignacion',{ascending:false});
+    if(error) throw error;
+    cache.mt_asignaciones = data;
+    const rows = data||[];
+    const stColors = {Activa:'#22c55e',Devuelta:'#3b82f6',Perdida:'#ef4444'};
+    el.innerHTML = `
+<div class="module-header">
+  <h2>📎 Asignaciones de Herramientas MT</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormMtAsig()">+ Nueva Asignación</button>`:''}
+</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Herramienta</th><th>Unidad MT</th><th>Conductor</th>
+    <th>Asignada</th><th>Devuelta</th><th>Estado</th><th>Notas</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin asignaciones registradas</td></tr>`:
+    rows.map(r=>`<tr>
+      <td><b>${r.mt_herramientas?.nombre||'—'}</b>${r.mt_herramientas?.codigo?`<br><span style="font-size:.75rem;color:var(--text2)">${r.mt_herramientas.codigo}</span>`:''}</td>
+      <td>${r.vehiculos?.ficha||'—'}</td>
+      <td>${r.mt_conductores?.nombre||'—'}</td>
+      <td>${r.fecha_asignacion}</td>
+      <td>${r.fecha_devolucion||'—'}</td>
+      <td><span style="color:${stColors[r.estado]||'var(--text)'};font-weight:600">${r.estado}</span></td>
+      <td>${r.notas||'—'}</td>
+      <td>${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="devolverMtAsig('${r.id}')">↩ Dev.</button>
+           <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarMtAsig('${r.id}')">🗑</button>`:'—'}
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormMtAsig = async function(){
+      const [{data:herr},{data:unidades},{data:conds}] = await Promise.all([
+        sb.from('mt_herramientas').select('id,nombre,codigo').eq('estado','Disponible').order('nombre'),
+        sb.from('vehiculos').select('id,ficha').eq('tipo_unidad','mini_truck').order('ficha'),
+        sb.from('mt_conductores').select('id,nombre').eq('activo',true).order('nombre'),
+      ]);
+      openModal('mt-asig','Nueva Asignación de Herramienta',`
+        <div class="form-grid">
+          <label>Herramienta *<select id="mta-hid">
+            <option value="">— Seleccionar —</option>
+            ${(herr||[]).map(h=>`<option value="${h.id}">${h.nombre}${h.codigo?' ('+h.codigo+')':''}</option>`).join('')}
+          </select></label>
+          <label>Unidad MT<select id="mta-vid">
+            <option value="">— Seleccionar —</option>
+            ${(unidades||[]).map(u=>`<option value="${u.id}">${u.ficha}</option>`).join('')}
+          </select></label>
+          <label>Conductor<select id="mta-cid">
+            <option value="">— Seleccionar —</option>
+            ${(conds||[]).map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('')}
+          </select></label>
+          <label>Fecha Asignación *<input type="date" id="mta-fasig" value="${new Date().toISOString().slice(0,10)}"></label>
+          <label style="grid-column:span 2">Notas<textarea id="mta-notas" rows="2"></textarea></label>
+        </div>`,
+        [{label:'Asignar',action:async()=>{
+          const hid = document.getElementById('mta-hid').value;
+          if(!hid){ toast('Selecciona una herramienta','error'); return; }
+          const payload = {
+            herramienta_id:  hid,
+            vehiculo_id:     document.getElementById('mta-vid').value||null,
+            conductor_id:    document.getElementById('mta-cid').value||null,
+            fecha_asignacion:document.getElementById('mta-fasig').value,
+            estado:          'Activa',
+            notas:           document.getElementById('mta-notas').value.trim()||null,
+          };
+          const {error} = await sb.from('mt_herramientas_asignaciones').insert(payload);
+          if(error){ toast('Error: '+error.message,'error'); return; }
+          await sb.from('mt_herramientas').update({estado:'Asignada'}).eq('id',hid);
+          cache.mt_asignaciones=null; cache.mt_herramientas=null;
+          closeModal(); toast('Herramienta asignada','success');
+          moduleLoaders['mt-asignaciones']();
+        }}]);
+    };
+    window.devolverMtAsig = async function(id){
+      const row = (cache.mt_asignaciones||[]).find(r=>r.id===id);
+      const fecha = new Date().toISOString().slice(0,10);
+      const {error} = await sb.from('mt_herramientas_asignaciones')
+        .update({estado:'Devuelta',fecha_devolucion:fecha}).eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      if(row?.herramienta_id)
+        await sb.from('mt_herramientas').update({estado:'Disponible'}).eq('id',row.herramienta_id);
+      cache.mt_asignaciones=null; cache.mt_herramientas=null;
+      toast('Herramienta devuelta','success'); moduleLoaders['mt-asignaciones']();
+    };
+    window.eliminarMtAsig = async function(id){
+      if(!confirm('¿Eliminar asignación?')) return;
+      const {error} = await sb.from('mt_herramientas_asignaciones').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.mt_asignaciones=null; toast('Eliminada','success'); moduleLoaders['mt-asignaciones']();
+    };
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 8. REPARACIONES MT ────────────────────────────────────
+moduleLoaders['mt-reparaciones'] = async function(){
+  const el = document.getElementById('mod-mt-reparaciones');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('reparaciones')
+      .select('*,vehiculos!inner(ficha,placa,tipo_unidad)')
+      .eq('vehiculos.tipo_unidad','mini_truck')
+      .order('fecha',{ascending:false});
+    if(error) throw error;
+    const rows = data||[];
+    const stColors = {Pendiente:'#f59e0b','En proceso':'#3b82f6',Completado:'#22c55e'};
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🔨 Reparaciones Mini Trucks</h2>
+  <span style="font-size:.8rem;color:var(--text2)">${rows.length} registros — desde módulo Reparaciones</span>
+</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Fecha</th><th>Unidad</th><th>Tipo</th><th>Taller</th>
+    <th>Costo</th><th>Estado</th><th>Notas</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Sin reparaciones de mini trucks</td></tr>`:
+    rows.map(r=>`<tr>
+      <td>${r.fecha}</td>
+      <td>${r.vehiculos?.ficha||'—'}</td>
+      <td>${r.tipo||'—'}</td>
+      <td>${r.taller||'—'}</td>
+      <td>${fmtMoney(r.coste)}</td>
+      <td><span style="color:${stColors[r.estado]||'var(--text)'};font-weight:600">${r.estado||'—'}</span></td>
+      <td>${r.notas||'—'}</td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>
+<div style="margin-top:12px;padding:12px;background:var(--bg2);border-radius:8px;font-size:.8rem;color:var(--text2)">
+  💡 Para registrar nuevas reparaciones de mini trucks, usa el módulo
+  <button class="btn btn-sm btn-outline" onclick="nav('reparaciones')">🔨 Reparaciones</button>
+  y selecciona una unidad MT.
+</div>`;
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 9. PÓLIZAS MT ─────────────────────────────────────────
+moduleLoaders['mt-polizas'] = async function(){
+  const el = document.getElementById('mod-mt-polizas');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('polizas')
+      .select('*,vehiculos!inner(ficha,placa,tipo_unidad)')
+      .eq('vehiculos.tipo_unidad','mini_truck')
+      .order('hasta',{ascending:false});
+    if(error) throw error;
+    const rows = data||[];
+    const hoy = new Date().toISOString().slice(0,10);
+    el.innerHTML = `
+<div class="module-header">
+  <h2>📋 Pólizas Mini Trucks</h2>
+  <span style="font-size:.8rem;color:var(--text2)">${rows.length} pólizas — desde módulo Pólizas</span>
+</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Unidad</th><th>Nº Póliza</th><th>Aseguradora</th>
+    <th>Desde</th><th>Hasta</th><th>Fianza</th><th>Estado</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Sin pólizas de mini trucks</td></tr>`:
+    rows.map(r=>{
+      const venc = r.hasta && r.hasta < hoy;
+      const pront = r.hasta && !venc && r.hasta <= new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+      const col = venc?'#ef4444':pront?'#f59e0b':'#22c55e';
+      const lbl = venc?'Vencida':pront?'Próx. vencer':'Vigente';
+      return `<tr>
+        <td>${r.vehiculos?.ficha||'—'}</td>
+        <td>${r.numero_poliza||'—'}</td>
+        <td>${r.aseguradora||'—'}</td>
+        <td>${r.desde||'—'}</td>
+        <td>${r.hasta||'—'}</td>
+        <td>${r.fianza?fmtMoney(r.fianza):'—'}</td>
+        <td><span style="color:${col};font-weight:600">${lbl}</span></td>
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table></div>
+<div style="margin-top:12px;padding:12px;background:var(--bg2);border-radius:8px;font-size:.8rem;color:var(--text2)">
+  💡 Para agregar pólizas a mini trucks, usa el módulo
+  <button class="btn btn-sm btn-outline" onclick="nav('polizas')">📋 Pólizas</button>.
+</div>`;
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 10. NOVEDADES MT ──────────────────────────────────────
+moduleLoaders['mt-novedades'] = async function(){
+  const el = document.getElementById('mod-mt-novedades');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('novedades_unidades')
+      .select('*,vehiculos!inner(ficha,placa,tipo_unidad)')
+      .eq('vehiculos.tipo_unidad','mini_truck')
+      .order('fecha',{ascending:false});
+    if(error) throw error;
+    const rows = data||[];
+    const stColors = {Pendiente:'#f59e0b','En Proceso':'#3b82f6',Resuelto:'#22c55e'};
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🪟 Novedades Mini Trucks</h2>
+  <span style="font-size:.8rem;color:var(--text2)">${rows.length} novedades</span>
+</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Fecha</th><th>Unidad</th><th>Tipo</th><th>Descripción</th>
+    <th>Prioridad</th><th>Estado</th><th>Reportado por</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text2)">Sin novedades de mini trucks</td></tr>`:
+    rows.map(r=>`<tr>
+      <td>${r.fecha}</td>
+      <td>${r.vehiculos?.ficha||'—'}</td>
+      <td>${r.tipo||'—'}</td>
+      <td>${r.descripcion||'—'}</td>
+      <td style="color:${r.prioridad==='Alta'?'#ef4444':r.prioridad==='Media'?'#f59e0b':'#22c55e'}">${r.prioridad||'—'}</td>
+      <td><span style="color:${stColors[r.estado]||'var(--text)'};font-weight:600">${r.estado||'—'}</span></td>
+      <td>${r.reportado_por||'—'}</td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>
+<div style="margin-top:12px;padding:12px;background:var(--bg2);border-radius:8px;font-size:.8rem;color:var(--text2)">
+  💡 Para registrar novedades de mini trucks, usa el módulo
+  <button class="btn btn-sm btn-outline" onclick="nav('novedades')">🪟 Novedades</button>
+  y selecciona una unidad MT.
+</div>`;
+  } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
 
 // ─── AUTH ─────────────────────────────────────────────────
 async function doLogin(){
