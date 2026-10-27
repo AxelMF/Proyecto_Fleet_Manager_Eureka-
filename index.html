@@ -155,6 +155,7 @@ code,pre{font-family:'DM Mono',monospace}
 
 /* TABLE */
 .table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.table-wrap table{min-width:540px} /* evita colapso en móvil; el scroll lo resuelve */
 .table-toolbar{padding:14px 18px;display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .search-input{padding:8px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;width:230px;outline:none;transition:.2s}
 .search-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,165,0,.08)}
@@ -193,6 +194,124 @@ tbody td{padding:11px 14px;color:var(--text)}
 .toast-error{background:#b91c1c}
 .toast-info{background:#1d4ed8}
 @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE MOBILE  (≤ 767 px)
+   ═══════════════════════════════════════════════════════ */
+/* Botón hamburguesa */
+#menu-toggle{
+  display:none;position:fixed;top:12px;left:12px;z-index:300;
+  width:40px;height:40px;border-radius:9px;border:1px solid var(--border);
+  background:var(--bg2);color:var(--text);font-size:1.2rem;cursor:pointer;
+  align-items:center;justify-content:center;transition:.2s;
+}
+#menu-toggle:hover{background:var(--bg3);border-color:var(--gold)}
+/* Overlay oscuro detrás del sidebar en móvil */
+#sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:198;
+}
+#sidebar-overlay.open{display:block}
+
+@media (max-width:767px){
+  /* Layout raíz */
+  body{overflow:auto}
+  #app{flex-direction:column;height:auto;min-height:100dvh}
+
+  /* Sidebar → panel lateral deslizable */
+  #sidebar{
+    position:fixed;top:0;left:0;bottom:0;z-index:199;
+    width:260px;transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto;
+  }
+  #sidebar.open{transform:translateX(0)}
+
+  /* Botón hamburguesa visible */
+  #menu-toggle{display:flex}
+
+  /* Contenido principal ocupa todo el ancho */
+  #main{flex:1;width:100%;min-width:0;padding-top:0}
+
+  /* Módulos: menos padding, permite scroll vertical */
+  .module{padding:64px 14px 20px}
+
+  /* Encabezado de módulo: apilado */
+  .module-header{
+    flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px;
+  }
+  .module-header>div:last-child{width:100%;display:flex;flex-wrap:wrap;gap:8px}
+
+  /* KPI grid: 2 columnas en móvil */
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .kpi-card .value{font-size:1.5rem}
+
+  /* Tablas: scroll horizontal controlado */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+  .table-wrap table{min-width:540px}
+  .table-container{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  /* Toolbar de tabla */
+  .table-toolbar{flex-direction:column;align-items:stretch;gap:8px;padding:12px}
+  .search-input{width:100%}
+
+  /* Formularios: 1 columna */
+  .form-grid{grid-template-columns:1fr}
+  .form-grid .full{grid-column:1}
+  .form-group input,.form-group select,.form-group textarea{font-size:1rem}
+
+  /* Modal */
+  .modal{
+    width:96vw;max-width:96vw;padding:20px 16px;
+    max-height:90dvh;overflow-y:auto;
+    border-radius:14px;
+  }
+  .modal-overlay{align-items:flex-end}
+  .modal-overlay .modal{border-bottom-left-radius:0;border-bottom-right-radius:0;margin-bottom:0}
+
+  /* Modal informe */
+  #informe-modal-box{
+    width:96vw;max-width:96vw;padding:22px 16px;
+    max-height:90dvh;overflow-y:auto;
+  }
+
+  /* Botones en acciones modales */
+  .modal-actions{flex-wrap:wrap}
+  .modal-actions .btn{flex:1;min-width:100px;text-align:center}
+
+  /* Botones pequeños: área táctil mínima 44px */
+  .btn-sm{padding:9px 14px;font-size:.82rem;min-height:36px}
+  .btn{min-height:40px}
+
+  /* Toast: ajustar en móvil */
+  #toast-container{bottom:16px;right:12px;left:12px;max-width:100%}
+  .toast{max-width:100%}
+
+  /* Tags / badges no se corten */
+  .badge{white-space:nowrap}
+
+  /* Scroll en filtros inline */
+  [style*="display:flex"][style*="flex-wrap"]{flex-wrap:wrap!important}
+
+  /* Inputs inline tipo búsqueda */
+  input[style*="min-width:200px"],
+  input[style*="min-width:220px"]{min-width:0!important;width:100%!important}
+  select[style*="min-width:200px"],
+  select[style*="min-width:220px"]{min-width:0!important;width:100%!important}
+
+  /* Evitar desbordamiento horizontal */
+  #main *{max-width:100%}
+  table{max-width:none}
+  img{max-width:100%;height:auto}
+
+  /* Mapa */
+  #map-container{height:calc(100dvh - 120px)}
+}
+
+@media (max-width:479px){
+  /* Móvil pequeño: KPIs en 1 columna */
+  .kpi-grid{grid-template-columns:1fr}
+  .module{padding:60px 10px 16px}
+}
 
 /* PRINT */
 @media print{
@@ -338,6 +457,10 @@ tbody td{padding:11px 14px;color:var(--text)}
 </div>
 
 <!-- APP -->
+<!-- Hamburguesa móvil y overlay del sidebar -->
+<button id="menu-toggle" aria-label="Abrir menú" onclick="toggleSidebar()">☰</button>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <div id="app">
   <!-- SIDEBAR -->
   <div id="sidebar">
@@ -519,7 +642,30 @@ function nav(id){
   document.getElementById('mod-'+id).classList.add('active');
   currentModule = id;
   loadModule(id);
+  // Cierra sidebar en móvil al navegar
+  if(window.innerWidth <= 767) closeSidebar();
 }
+
+// ── Sidebar móvil ──────────────────────────────────────
+function toggleSidebar(){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebar-overlay');
+  const btn = document.getElementById('menu-toggle');
+  const open = sb.classList.toggle('open');
+  ov.classList.toggle('open', open);
+  btn.textContent = open ? '✕' : '☰';
+  btn.setAttribute('aria-expanded', open);
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+  const btn = document.getElementById('menu-toggle');
+  btn.textContent = '☰';
+  btn.setAttribute('aria-expanded','false');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSidebar(); });
 function loadModule(id){
   window._currentModule = id;
   const fn = moduleLoaders[id];
