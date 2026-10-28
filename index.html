@@ -508,6 +508,13 @@ tbody td{padding:11px 14px;color:var(--text)}
       <div class="nav-item" onclick="nav('mt-polizas')"><span class="icon">📋</span>Pólizas MT</div>
       <div class="nav-item" onclick="nav('mt-novedades')"><span class="icon">🪟</span>Novedades MT</div>
 
+      <div class="nav-section">🏭 Proveedores & Talleres</div>
+      <div class="nav-item" onclick="nav('pt-dashboard')"><span class="icon">📊</span>Dashboard PT</div>
+      <div class="nav-item" onclick="nav('pt-proveedores')"><span class="icon">🏭</span>Proveedores</div>
+      <div class="nav-item" onclick="nav('pt-talleres')"><span class="icon">🔩</span>Talleres</div>
+      <div class="nav-item" onclick="nav('pt-cotizaciones')" id="nav-pt-cotizaciones"><span class="icon">📝</span>Cotizaciones <span id="badge-pt-cot" style="display:none;background:#f59e0b;color:#000;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
+      <div class="nav-item" onclick="nav('pt-evaluaciones')"><span class="icon">⭐</span>Evaluaciones</div>
+
       <div class="nav-section">Administración</div>
       <div class="nav-item" onclick="nav('compras')" id="nav-compras"><span class="icon">🛒</span>Compras & Facturas <span id="badge-compras" style="display:none;background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
       <div class="nav-item" onclick="nav('gastos')" id="nav-gastos"><span class="icon">📄</span>Facturas Personales <span id="badge-gastos" style="display:none;background:#ef4444;color:#fff;font-size:.65rem;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
@@ -546,6 +553,11 @@ tbody td{padding:11px 14px;color:var(--text)}
     <div id="mod-exec-dash" class="module"><div class="empty-state">Cargando dashboard ejecutivo…</div></div>
     <div id="mod-usuarios" class="module"><div class="empty-state">Cargando usuarios…</div></div>
     <div id="mod-portal-mec" class="module"><div class="empty-state">Cargando portal…</div></div>
+    <div id="mod-pt-dashboard" class="module"><div class="empty-state">Cargando…</div></div>
+    <div id="mod-pt-proveedores" class="module"><div class="empty-state">Cargando…</div></div>
+    <div id="mod-pt-talleres" class="module"><div class="empty-state">Cargando…</div></div>
+    <div id="mod-pt-cotizaciones" class="module"><div class="empty-state">Cargando…</div></div>
+    <div id="mod-pt-evaluaciones" class="module"><div class="empty-state">Cargando…</div></div>
     <div id="mod-mt-dashboard" class="module"><div class="empty-state">Cargando Dashboard MT…</div></div>
     <div id="mod-mt-unidades" class="module"><div class="empty-state">Cargando unidades MT…</div></div>
     <div id="mod-mt-conductores" class="module"><div class="empty-state">Cargando conductores MT…</div></div>
@@ -632,6 +644,7 @@ const cache = {
   compras_ocs: null, compras_facts: null, compras_provs: null,
   mt_unidades: null, mt_conductores: null, mt_combustible: null,
   mt_kilometraje: null, mt_herramientas: null, mt_asignaciones: null,
+  pt_proveedores: null, pt_talleres: null, pt_cotizaciones: null, pt_evaluaciones: null,
   clear(key){ if(key) this[key]=null; else Object.keys(this).filter(k=>typeof this[k]!=='function').forEach(k=>this[k]=null); }
 };
 
@@ -4988,6 +5001,24 @@ const EXPORT_COLS = {
     {key:'estado',label:'Estado'},{key:'cantidad',label:'Cantidad'},
     {key:'precio',label:'Precio'},{key:'proveedor',label:'Proveedor'},
   ],
+  'pt-proveedores':[
+    {key:'codigo_interno',label:'Código'},{key:'nombre',label:'Nombre'},
+    {key:'tipo_proveedor',label:'Tipo'},{key:'categoria_servicio',label:'Categoría'},
+    {key:'contacto',label:'Contacto'},{key:'telefono',label:'Teléfono'},
+    {key:'email',label:'Email'},{key:'ciudad',label:'Ciudad'},
+    {key:'estado_prov',label:'Estado'},
+  ],
+  'pt-talleres':[
+    {key:'codigo',label:'Código'},{key:'nombre',label:'Nombre'},
+    {key:'responsable',label:'Responsable'},{key:'telefono',label:'Teléfono'},
+    {key:'direccion',label:'Dirección'},{key:'estado',label:'Estado'},
+  ],
+  'pt-cotizaciones':[
+    {key:'numero',label:'Nº'},{key:'fecha_emision',label:'Fecha'},
+    {key:'fecha_vencimiento',label:'Vencimiento'},{key:'descripcion',label:'Descripción'},
+    {key:'subtotal',label:'Subtotal'},{key:'itbis',label:'ITBIS'},
+    {key:'total',label:'Total'},{key:'estado',label:'Estado'},
+  ],
 };
 
 // ── SISTEMA DE INFORMES PDF ────────────────────────────────────────────────
@@ -5291,6 +5322,813 @@ function graficaMensualMec(data){
   </div>
 </div>`;
 }
+
+// ══════════════════════════════════════════════════════════
+// PROVEEDORES & TALLERES — 5 SUB-MÓDULOS
+// ══════════════════════════════════════════════════════════
+
+const PT_ESPECIALIDADES = [
+  'Mecánica general','Electricidad automotriz','Diagnóstico electrónico',
+  'Motor','Transmisión y embrague','Frenos','Suspensión y dirección',
+  'Refrigeración','Aire acondicionado','Neumáticos y alineación',
+  'Carrocería y pintura','Cristales y accesorios',
+];
+const PT_CATEGORIAS = [
+  'Taller mecánico','Taller eléctrico','Taller de neumáticos',
+  'Taller transmisión/embrague','Taller refrigeración/AC',
+  'Taller carrocería/pintura','Proveedor de repuestos',
+  'Proveedor lubricantes/filtros','Proveedor de baterías',
+  'Proveedor de neumáticos','Grúa y asistencia vial','Aseguradora','Otro',
+];
+const PT_ESTADOS = {
+  Activo:'#22c55e','Pendiente de aprobación':'#f59e0b',Suspendido:'#f97316',Inactivo:'#ef4444',
+};
+const PT_COT_ESTADOS = {
+  Borrador:'#94a3b8',Recibida:'#3b82f6','En evaluación':'#f59e0b',
+  'Pendiente de aprobación':'#f97316',Aprobada:'#22c55e',Rechazada:'#ef4444',Vencida:'#6b7280',
+};
+
+// ── PT-1. DASHBOARD ───────────────────────────────────────
+moduleLoaders['pt-dashboard'] = async function(){
+  const el = document.getElementById('mod-pt-dashboard');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const [rP, rT, rC, rE, rR] = await Promise.all([
+      sb.from('proveedores').select('id,estado_prov,tipo_proveedor,documentos_pendientes'),
+      sb.from('pt_talleres').select('id,estado'),
+      sb.from('pt_cotizaciones').select('id,estado,total,created_at'),
+      sb.from('pt_evaluaciones').select('id,proveedor_id,calidad_trabajo,cumplimiento_plazos,precio_calidad,cumplimiento_garantia,atencion,disponibilidad'),
+      sb.from('reparaciones').select('id,estado,taller_id,proveedor_rep_id,fecha').order('fecha',{ascending:false}).limit(5),
+    ]);
+    const provs = rP.data||[];
+    const talleres = rT.data||[];
+    const cots = rC.data||[];
+    const evals = rE.data||[];
+    const reps = rR.data||[];
+
+    const totalProvs = provs.length;
+    const talleresActivos = talleres.filter(t=>t.estado==='Activo').length;
+    const pendAprobacion = provs.filter(p=>p.estado_prov==='Pendiente de aprobación').length;
+    const cotsPend = cots.filter(c=>['Recibida','En evaluación','Pendiente de aprobación'].includes(c.estado)).length;
+    const docsP = provs.filter(p=>p.documentos_pendientes).length;
+    const gastoTotal = cots.filter(c=>c.estado==='Aprobada').reduce((s,c)=>s+Number(c.total||0),0);
+
+    // badge cotizaciones pendientes
+    const badge = document.getElementById('badge-pt-cot');
+    if(badge){ badge.style.display = cotsPend>0?'inline':'none'; badge.textContent=cotsPend; }
+
+    const hoy = new Date().toISOString().slice(0,10);
+    const cotsVenc = cots.filter(c=>c.fecha_vencimiento && c.fecha_vencimiento<hoy && !['Aprobada','Rechazada','Vencida'].includes(c.estado));
+
+    el.innerHTML = `
+<div class="module-header"><h2>📊 Dashboard — Proveedores & Talleres</h2></div>
+<div class="kpi-grid">
+  <div class="kpi-card" style="--kpi-color:#f0a500">
+    <div class="kpi-val">${totalProvs}</div>
+    <div class="kpi-label">Total Proveedores</div>
+    <div class="kpi-sub">${provs.filter(p=>p.estado_prov==='Activo').length} activos</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#22c55e">
+    <div class="kpi-val">${talleresActivos}</div>
+    <div class="kpi-label">Talleres Activos</div>
+    <div class="kpi-sub">${talleres.length} registrados</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#f59e0b">
+    <div class="kpi-val">${cotsPend}</div>
+    <div class="kpi-label">Cotizaciones Pendientes</div>
+    <div class="kpi-sub">${cots.length} total</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#3b82f6">
+    <div class="kpi-val">${gastoTotal>0?fmtMoney(gastoTotal):'RD$ 0'}</div>
+    <div class="kpi-label">Gasto Cotizaciones Aprobadas</div>
+    <div class="kpi-sub">${cots.filter(c=>c.estado==='Aprobada').length} aprobadas</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#a855f7">
+    <div class="kpi-val">${pendAprobacion}</div>
+    <div class="kpi-label">Proveedores Pendientes</div>
+    <div class="kpi-sub">de aprobación</div>
+  </div>
+  <div class="kpi-card" style="--kpi-color:#ef4444">
+    <div class="kpi-val">${docsP}</div>
+    <div class="kpi-label">Docs Pendientes</div>
+    <div class="kpi-sub">documentación incompleta</div>
+  </div>
+</div>
+
+${cotsVenc.length>0?`
+<div style="background:rgba(239,68,68,.1);border:1px solid #ef4444;border-radius:10px;padding:14px;margin:8px 0">
+  <b style="color:#ef4444">⚠ ${cotsVenc.length} cotización(es) vencida(s) sin cerrar</b>
+  <button class="btn btn-sm btn-outline" style="margin-left:12px" onclick="nav('pt-cotizaciones')">Ver cotizaciones</button>
+</div>`:''}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <h4 style="font-size:.85rem;color:var(--text2);margin-bottom:12px">Proveedores por tipo</h4>
+    ${['Taller','Proveedor','Grúa/Asistencia','Aseguradora','Otro'].map(tipo=>{
+      const n = provs.filter(p=>p.tipo_proveedor===tipo).length;
+      if(!n) return '';
+      const pct = Math.round(n/totalProvs*100)||0;
+      return `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:3px">
+          <span>${tipo}</span><span style="color:var(--gold)">${n}</span>
+        </div>
+        <div style="background:var(--bg3);border-radius:4px;height:5px">
+          <div style="background:var(--gold);width:${pct}%;height:5px;border-radius:4px"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+    <h4 style="font-size:.85rem;color:var(--text2);margin-bottom:12px">Accesos rápidos</h4>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-sm" onclick="nav('pt-proveedores')">🏭 Gestionar Proveedores</button>
+      <button class="btn btn-sm" onclick="nav('pt-talleres')">🔩 Gestionar Talleres</button>
+      <button class="btn btn-sm" onclick="nav('pt-cotizaciones')">📝 Cotizaciones</button>
+      <button class="btn btn-sm" onclick="nav('pt-evaluaciones')">⭐ Evaluaciones</button>
+    </div>
+  </div>
+</div>`;
+  } catch(e){ el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── PT-2. PROVEEDORES ─────────────────────────────────────
+moduleLoaders['pt-proveedores'] = async function(){
+  const el = document.getElementById('mod-pt-proveedores');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('proveedores').select('*').order('nombre');
+    if(error) throw error;
+    cache.pt_proveedores = data;
+    const rows = data||[];
+    const bus = window._ptProvBus||'';
+    const filtEst = window._ptProvEst||'';
+    const filtTipo = window._ptProvTipo||'';
+    let vis = rows.filter(r=>{
+      const b = bus.toLowerCase();
+      if(bus && !((r.nombre||'').toLowerCase().includes(b)||(r.codigo_interno||'').toLowerCase().includes(b)||(r.rnc||'').includes(bus)||(r.telefono||'').includes(bus))) return false;
+      if(filtEst && r.estado_prov !== filtEst) return false;
+      if(filtTipo && r.tipo_proveedor !== filtTipo) return false;
+      return true;
+    });
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🏭 Proveedores & Talleres</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormPtProv()">+ Nuevo Proveedor</button>`:''}
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+  <input class="form-input" style="flex:1;min-width:180px" placeholder="Buscar nombre, código, RNC, teléfono…"
+    value="${bus}" oninput="window._ptProvBus=this.value;moduleLoaders['pt-proveedores']()">
+  <select class="form-input" style="width:auto" onchange="window._ptProvEst=this.value;moduleLoaders['pt-proveedores']()">
+    <option value="">Todos los estados</option>
+    ${Object.keys(PT_ESTADOS).map(s=>`<option${filtEst===s?' selected':''}>${s}</option>`).join('')}
+  </select>
+  <select class="form-input" style="width:auto" onchange="window._ptProvTipo=this.value;moduleLoaders['pt-proveedores']()">
+    <option value="">Todos los tipos</option>
+    ${['Taller','Proveedor','Grúa/Asistencia','Aseguradora','Otro'].map(t=>`<option${filtTipo===t?' selected':''}>${t}</option>`).join('')}
+  </select>
+  ${(bus||filtEst||filtTipo)?`<button class="btn btn-sm btn-outline" onclick="window._ptProvBus='';window._ptProvEst='';window._ptProvTipo='';moduleLoaders['pt-proveedores']()">✕ Limpiar</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('pt-proveedores','Proveedores')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Código</th><th>Nombre</th><th>Tipo</th><th>Categoría</th>
+    <th>Contacto</th><th>Teléfono</th><th>Ciudad</th><th>Estado</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${vis.length===0?`<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text2)">Sin proveedores${bus||filtEst||filtTipo?' para los filtros aplicados':''}</td></tr>`:
+    vis.map(r=>`<tr>
+      <td>${r.codigo_interno||'—'}</td>
+      <td><b>${r.nombre}</b>${r.razon_social&&r.razon_social!==r.nombre?`<br><span style="font-size:.75rem;color:var(--text2)">${r.razon_social}</span>`:''}</td>
+      <td>${r.tipo_proveedor||'—'}</td>
+      <td style="font-size:.8rem">${r.categoria_servicio||r.categoria_principal||'—'}</td>
+      <td>${r.contacto||'—'}</td>
+      <td>${r.telefono||'—'}</td>
+      <td>${r.ciudad||'—'}</td>
+      <td><span style="color:${PT_ESTADOS[r.estado_prov]||'var(--text)'};font-weight:600">${r.estado_prov||'Activo'}</span>${r.documentos_pendientes?` <span style="color:#f59e0b;font-size:.7rem">📄</span>`:''}</td>
+      <td style="white-space:nowrap">
+        ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="verFichaProv(${r.id})" title="Ver ficha">👁</button>
+         <button class="btn btn-sm btn-outline" onclick="editarPtProv(${r.id})" title="Editar">✏️</button>`:'—'}
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>
+<div style="font-size:.75rem;color:var(--text2);margin-top:6px">${vis.length} de ${rows.length} proveedores</div>`;
+
+    // ── Ficha integral ────────────────────────────────────
+    window.verFichaProv = async function(id){
+      const p = (cache.pt_proveedores||[]).find(x=>x.id===id)||{};
+      const [{data:cots},{data:evals},{data:reps}] = await Promise.all([
+        sb.from('pt_cotizaciones').select('*').eq('proveedor_id',id).order('fecha_emision',{ascending:false}),
+        sb.from('pt_evaluaciones').select('*').eq('proveedor_id',id).order('fecha',{ascending:false}),
+        sb.from('reparaciones').select('id,fecha,tipo,estado,coste,vehiculo_id,vehiculos(ficha)').eq('proveedor_rep_id',id).order('fecha',{ascending:false}).limit(10),
+      ]);
+      const avgEval = (evals||[]).length>0 ?
+        (evals.reduce((s,e)=>s+(Number(e.calidad_trabajo||0)+Number(e.cumplimiento_plazos||0)+Number(e.precio_calidad||0)+Number(e.cumplimiento_garantia||0)+Number(e.atencion||0)+Number(e.disponibilidad||0))/6,0)/evals.length).toFixed(1) : '—';
+      openModal('pt-ficha-prov', `🏭 ${p.nombre}`, `
+<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+  ${['info','cotizaciones','reparaciones','evaluaciones'].map((t,i)=>
+    `<button class="btn btn-sm${i===0?' ':' btn-outline'}" id="ftab-${t}" onclick="fichaTab('${t}')">${t==='info'?'ℹ️ Info':t==='cotizaciones'?'📝 Cotizaciones':t==='reparaciones'?'🔨 Reparaciones':'⭐ Evaluaciones'}</button>`
+  ).join('')}
+</div>
+<div id="ftab-content">
+  <div id="fc-info">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.85rem">
+      ${[['Código',p.codigo_interno],['RNC',p.rnc],['Razón social',p.razon_social],['Tipo',p.tipo_proveedor],
+         ['Categoría',p.categoria_servicio||p.categoria_principal],['Contacto',p.contacto],
+         ['Teléfono',p.telefono],['Tel. 2',p.telefono2],['Email',p.email],
+         ['Ciudad',p.ciudad],['Provincia',p.provincia],['Cond. pago',p.condiciones_pago],
+         ['Estado',p.estado_prov],['Calificación',p.calificacion?p.calificacion+'/5':'—'],
+         ['Prom. eval.',avgEval!=='—'?avgEval+'/5':avgEval],['Docs pendientes',p.documentos_pendientes?'Sí':'No'],
+      ].map(([l,v])=>`<div><span style="color:var(--text2);font-size:.75rem">${l}</span><div style="font-weight:500">${v||'—'}</div></div>`).join('')}
+    </div>
+    ${p.notas?`<div style="margin-top:10px;padding:10px;background:var(--bg3);border-radius:8px;font-size:.82rem">${p.notas}</div>`:''}
+  </div>
+  <div id="fc-cotizaciones" style="display:none">
+    ${(cots||[]).length===0?'<p style="color:var(--text2)">Sin cotizaciones registradas</p>':
+      `<div class="table-wrap"><table class="data-table"><thead><tr><th>Nº</th><th>Fecha</th><th>Total</th><th>Estado</th></tr></thead><tbody>
+      ${cots.map(c=>`<tr><td>${c.numero||'—'}</td><td>${c.fecha_emision}</td><td>${fmtMoney(c.total)}</td>
+        <td><span style="color:${PT_COT_ESTADOS[c.estado]||'var(--text)'}">${c.estado}</span></td></tr>`).join('')}
+      </tbody></table></div>`}
+  </div>
+  <div id="fc-reparaciones" style="display:none">
+    ${(reps||[]).length===0?'<p style="color:var(--text2)">Sin reparaciones asociadas</p>':
+      `<div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Vehículo</th><th>Tipo</th><th>Costo</th><th>Estado</th></tr></thead><tbody>
+      ${reps.map(r=>`<tr><td>${r.fecha}</td><td>${r.vehiculos?.ficha||'—'}</td><td>${r.tipo||'—'}</td><td>${fmtMoney(r.coste)}</td><td>${r.estado||'—'}</td></tr>`).join('')}
+      </tbody></table></div>`}
+  </div>
+  <div id="fc-evaluaciones" style="display:none">
+    ${(evals||[]).length===0?'<p style="color:var(--text2)">Sin evaluaciones</p>':
+      evals.map(e=>{
+        const prom = ((Number(e.calidad_trabajo||0)+Number(e.cumplimiento_plazos||0)+Number(e.precio_calidad||0)+Number(e.cumplimiento_garantia||0)+Number(e.atencion||0)+Number(e.disponibilidad||0))/6).toFixed(1);
+        return `<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:8px;font-size:.82rem">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <b>${e.fecha}</b><span style="color:var(--gold);font-weight:700">${prom}/5 ⭐</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+            ${[['Calidad',e.calidad_trabajo],['Plazos',e.cumplimiento_plazos],['Precio/Cal.',e.precio_calidad],
+               ['Garantía',e.cumplimiento_garantia],['Atención',e.atencion],['Disponib.',e.disponibilidad]]
+              .map(([l,v])=>`<div><span style="color:var(--text2)">${l}</span> ${'★'.repeat(v||0)}${'☆'.repeat(5-(v||0))}</div>`).join('')}
+          </div>
+          ${e.comentarios?`<div style="margin-top:6px;color:var(--text2)">${e.comentarios}</div>`:''}
+        </div>`;
+      }).join('')}
+  </div>
+</div>`,
+        [{label:'Editar proveedor',action:()=>{ closeModal(); editarPtProv(id); }}]);
+      window.fichaTab = function(t){
+        ['info','cotizaciones','reparaciones','evaluaciones'].forEach(x=>{
+          document.getElementById('fc-'+x).style.display = x===t?'':'none';
+          const btn = document.getElementById('ftab-'+x);
+          if(btn){ btn.className = x===t?'btn btn-sm':'btn btn-sm btn-outline'; }
+        });
+      };
+    };
+
+    // ── Form proveedor ────────────────────────────────────
+    window.abrirFormPtProv = async function(id){
+      const p = id ? (cache.pt_proveedores||[]).find(x=>x.id===id)||{} : {};
+      openModal('pt-prov-form', id?'Editar Proveedor':'Nuevo Proveedor', `
+<div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+  <div style="font-size:.75rem;color:var(--text2);margin-bottom:8px;padding:6px;background:var(--bg3);border-radius:6px">Información general</div>
+  <div class="form-grid">
+    <label>Código interno<input id="pp-cod" value="${p.codigo_interno||''}"></label>
+    <label>Nombre comercial *<input id="pp-nom" value="${p.nombre||''}"></label>
+    <label>Razón social<input id="pp-razon" value="${p.razon_social||''}"></label>
+    <label>RNC<input id="pp-rnc" value="${p.rnc||''}" placeholder="Opcional"></label>
+    <label>Tipo<select id="pp-tipo">
+      ${['Taller','Proveedor','Grúa/Asistencia','Aseguradora','Otro'].map(t=>`<option${(p.tipo_proveedor||'Proveedor')===t?' selected':''}>${t}</option>`).join('')}
+    </select></label>
+    <label>Categoría<select id="pp-cat">
+      <option value="">— Seleccionar —</option>
+      ${PT_CATEGORIAS.map(c=>`<option${(p.categoria_servicio||p.categoria_principal)===c?' selected':''}>${c}</option>`).join('')}
+    </select></label>
+  </div>
+  <div style="font-size:.75rem;color:var(--text2);margin:10px 0 8px;padding:6px;background:var(--bg3);border-radius:6px">Contacto</div>
+  <div class="form-grid">
+    <label>Persona de contacto<input id="pp-cont" value="${p.contacto||''}"></label>
+    <label>Contacto comercial<input id="pp-contc" value="${p.contacto_comercial||''}"></label>
+    <label>Teléfono principal<input id="pp-tel" value="${p.telefono||''}"></label>
+    <label>Teléfono secundario<input id="pp-tel2" value="${p.telefono2||''}"></label>
+    <label style="grid-column:span 2">Correo electrónico<input id="pp-email" type="email" value="${p.email||''}"></label>
+    <label style="grid-column:span 2">Dirección<input id="pp-dir" value="${p.direccion||''}"></label>
+    <label>Ciudad/Municipio<input id="pp-ciudad" value="${p.ciudad||''}"></label>
+    <label>Provincia<input id="pp-prov" value="${p.provincia||''}"></label>
+  </div>
+  <div style="font-size:.75rem;color:var(--text2);margin:10px 0 8px;padding:6px;background:var(--bg3);border-radius:6px">Condiciones comerciales</div>
+  <div class="form-grid">
+    <label>Condiciones de pago<input id="pp-condp" value="${p.condiciones_pago||''}" placeholder="Ej: 30 días, contado…"></label>
+    <label>Métodos de pago<input id="pp-metpago" value="${p.metodos_pago||''}" placeholder="Ej: Transferencia, cheque…"></label>
+    <label>Estado<select id="pp-est">
+      ${Object.keys(PT_ESTADOS).map(s=>`<option${(p.estado_prov||'Activo')===s?' selected':''}>${s}</option>`).join('')}
+    </select></label>
+    <label>Docs pendientes<select id="pp-docs">
+      <option value="false"${!p.documentos_pendientes?' selected':''}>No</option>
+      <option value="true"${p.documentos_pendientes?' selected':''}>Sí</option>
+    </select></label>
+    <label style="grid-column:span 2">Observaciones<textarea id="pp-obs" rows="2">${p.notas||''}</textarea></label>
+  </div>
+</div>`,
+        [{label:'Guardar',action:async()=>{
+          const nom = document.getElementById('pp-nom').value.trim();
+          if(!nom){ toast('Nombre requerido','error'); return; }
+          const payload = {
+            codigo_interno:    document.getElementById('pp-cod').value.trim()||null,
+            nombre:            nom,
+            razon_social:      document.getElementById('pp-razon').value.trim()||null,
+            rnc:               document.getElementById('pp-rnc').value.trim()||null,
+            tipo_proveedor:    document.getElementById('pp-tipo').value,
+            categoria_servicio:document.getElementById('pp-cat').value||null,
+            categoria_principal:document.getElementById('pp-cat').value||null,
+            contacto:          document.getElementById('pp-cont').value.trim()||null,
+            contacto_comercial:document.getElementById('pp-contc').value.trim()||null,
+            telefono:          document.getElementById('pp-tel').value.trim()||null,
+            telefono2:         document.getElementById('pp-tel2').value.trim()||null,
+            email:             document.getElementById('pp-email').value.trim()||null,
+            direccion:         document.getElementById('pp-dir').value.trim()||null,
+            ciudad:            document.getElementById('pp-ciudad').value.trim()||null,
+            provincia:         document.getElementById('pp-prov').value.trim()||null,
+            condiciones_pago:  document.getElementById('pp-condp').value.trim()||null,
+            metodos_pago:      document.getElementById('pp-metpago').value.trim()||null,
+            estado_prov:       document.getElementById('pp-est').value,
+            documentos_pendientes: document.getElementById('pp-docs').value==='true',
+            notas:             document.getElementById('pp-obs').value.trim()||null,
+          };
+          let err;
+          if(id){ ({error:err}=await sb.from('proveedores').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('proveedores').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.pt_proveedores=null; closeModal(); toast('Proveedor guardado','success');
+          moduleLoaders['pt-proveedores']();
+        }}]);
+    };
+    window.editarPtProv = (id) => abrirFormPtProv(id);
+  } catch(e){ el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── PT-3. TALLERES ────────────────────────────────────────
+moduleLoaders['pt-talleres'] = async function(){
+  const el = document.getElementById('mod-pt-talleres');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('pt_talleres')
+      .select('*,proveedores(nombre)').order('nombre');
+    if(error) throw error;
+    cache.pt_talleres = data;
+    const rows = data||[];
+    el.innerHTML = `
+<div class="module-header">
+  <h2>🔩 Talleres</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormPtTaller()">+ Nuevo Taller</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('pt-talleres','Talleres')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Código</th><th>Nombre</th><th>Proveedor</th><th>Especialidades</th>
+    <th>Responsable</th><th>Teléfono</th><th>Estado</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin talleres registrados</td></tr>`:
+    rows.map(r=>`<tr>
+      <td>${r.codigo||'—'}</td>
+      <td><b>${r.nombre}</b></td>
+      <td>${r.proveedores?.nombre||'—'}</td>
+      <td style="font-size:.75rem;max-width:200px">${(r.especialidades||[]).join(', ')||'—'}</td>
+      <td>${r.responsable||'—'}</td>
+      <td>${r.telefono||'—'}</td>
+      <td><span style="color:${r.estado==='Activo'?'#22c55e':r.estado==='Suspendido'?'#f97316':'#ef4444'};font-weight:600">${r.estado}</span></td>
+      <td>${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="editarPtTaller(${r.id})">✏️</button>
+           <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarPtTaller(${r.id})">🗑</button>`:'—'}
+      </td>
+    </tr>`).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormPtTaller = async function(id){
+      const t = id ? (cache.pt_talleres||[]).find(x=>x.id===id)||{} : {};
+      const {data:provs} = await sb.from('proveedores').select('id,nombre').eq('estado_prov','Activo').order('nombre');
+      const espActuales = t.especialidades||[];
+      openModal('pt-taller-form', id?'Editar Taller':'Nuevo Taller', `
+<div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+  <div class="form-grid">
+    <label>Nombre *<input id="pt-tnom" value="${t.nombre||''}"></label>
+    <label>Código<input id="pt-tcod" value="${t.codigo||''}"></label>
+    <label style="grid-column:span 2">Proveedor relacionado<select id="pt-tprov">
+      <option value="">— Sin proveedor —</option>
+      ${(provs||[]).map(p=>`<option value="${p.id}"${t.proveedor_id===p.id?' selected':''}>${p.nombre}</option>`).join('')}
+    </select></label>
+    <label>Responsable<input id="pt-tresp" value="${t.responsable||''}"></label>
+    <label>Teléfono<input id="pt-ttel" value="${t.telefono||''}"></label>
+    <label style="grid-column:span 2">Dirección<input id="pt-tdir" value="${t.direccion||''}"></label>
+    <label>Horario<input id="pt-thor" value="${t.horario||''}" placeholder="Ej: Lun-Vie 8am-6pm"></label>
+    <label>Tiempo estimado rep.<input id="pt-ttime" value="${t.tiempo_estimado||''}" placeholder="Ej: 1-3 días"></label>
+    <label>Tipos vehículos<input id="pt-tveh" value="${t.tipos_vehiculos||''}"></label>
+    <label>Marcas atendidas<input id="pt-tmarcas" value="${t.marcas_atendidas||''}"></label>
+    <label>Capacidad<input id="pt-tcap" value="${t.capacidad||''}" placeholder="Ej: 5 vehículos simultáneos"></label>
+    <label>Garantía<input id="pt-tgar" value="${t.garantia||''}" placeholder="Ej: 3 meses en mano de obra"></label>
+    <label>Estado<select id="pt-test">
+      ${['Activo','Inactivo','Suspendido'].map(s=>`<option${(t.estado||'Activo')===s?' selected':''}>${s}</option>`).join('')}
+    </select></label>
+  </div>
+  <div style="margin:10px 0 6px;font-size:.75rem;color:var(--text2)">Especialidades</div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:4px">
+    ${PT_ESPECIALIDADES.map(esp=>`
+      <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;cursor:pointer">
+        <input type="checkbox" value="${esp}" ${espActuales.includes(esp)?'checked':''} class="pt-esp-chk">
+        ${esp}
+      </label>`).join('')}
+  </div>
+  <div style="margin-top:10px">
+    <label>Observaciones<textarea id="pt-tobs" rows="2">${t.observaciones||''}</textarea></label>
+  </div>
+</div>`,
+        [{label:'Guardar',action:async()=>{
+          const nom = document.getElementById('pt-tnom').value.trim();
+          if(!nom){ toast('Nombre requerido','error'); return; }
+          const esp = [...document.querySelectorAll('.pt-esp-chk:checked')].map(c=>c.value);
+          const payload = {
+            nombre:         nom,
+            codigo:         document.getElementById('pt-tcod').value.trim()||null,
+            proveedor_id:   document.getElementById('pt-tprov').value||null,
+            responsable:    document.getElementById('pt-tresp').value.trim()||null,
+            telefono:       document.getElementById('pt-ttel').value.trim()||null,
+            direccion:      document.getElementById('pt-tdir').value.trim()||null,
+            horario:        document.getElementById('pt-thor').value.trim()||null,
+            tiempo_estimado:document.getElementById('pt-ttime').value.trim()||null,
+            tipos_vehiculos:document.getElementById('pt-tveh').value.trim()||null,
+            marcas_atendidas:document.getElementById('pt-tmarcas').value.trim()||null,
+            capacidad:      document.getElementById('pt-tcap').value.trim()||null,
+            garantia:       document.getElementById('pt-tgar').value.trim()||null,
+            estado:         document.getElementById('pt-test').value,
+            especialidades: esp,
+            observaciones:  document.getElementById('pt-tobs').value.trim()||null,
+          };
+          let err;
+          if(id){ ({error:err}=await sb.from('pt_talleres').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('pt_talleres').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.pt_talleres=null; closeModal(); toast('Taller guardado','success');
+          moduleLoaders['pt-talleres']();
+        }}]);
+    };
+    window.editarPtTaller = (id) => abrirFormPtTaller(id);
+    window.eliminarPtTaller = async function(id){
+      const {count} = await sb.from('pt_cotizaciones').select('id',{count:'exact',head:true}).eq('taller_id',id);
+      if(count>0){ toast('No se puede eliminar: tiene cotizaciones asociadas. Desactívalo en su lugar.','error'); return; }
+      if(!confirm('¿Eliminar taller?')) return;
+      const {error} = await sb.from('pt_talleres').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.pt_talleres=null; toast('Taller eliminado','success'); moduleLoaders['pt-talleres']();
+    };
+  } catch(e){ el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── PT-4. COTIZACIONES ────────────────────────────────────
+moduleLoaders['pt-cotizaciones'] = async function(){
+  const el = document.getElementById('mod-pt-cotizaciones');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('pt_cotizaciones')
+      .select('*,proveedores(nombre),pt_talleres(nombre),vehiculos(ficha)')
+      .order('fecha_emision',{ascending:false});
+    if(error) throw error;
+    cache.pt_cotizaciones = data;
+    const rows = data||[];
+    const filtEst = window._ptCotEst||'';
+    const bus = window._ptCotBus||'';
+    const hoy = new Date().toISOString().slice(0,10);
+    let vis = rows.filter(r=>{
+      if(filtEst && r.estado!==filtEst) return false;
+      if(bus && !((r.numero||'').toLowerCase().includes(bus.toLowerCase())||(r.descripcion||'').toLowerCase().includes(bus.toLowerCase()))) return false;
+      return true;
+    });
+
+    // badge
+    const cotsPend = rows.filter(c=>['Recibida','En evaluación','Pendiente de aprobación'].includes(c.estado)).length;
+    const badge = document.getElementById('badge-pt-cot');
+    if(badge){ badge.style.display=cotsPend>0?'inline':'none'; badge.textContent=cotsPend; }
+
+    el.innerHTML = `
+<div class="module-header">
+  <h2>📝 Cotizaciones</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormPtCot()">+ Nueva Cotización</button>`:''}
+</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+  <input class="form-input" style="flex:1;min-width:180px" placeholder="Buscar nº, descripción…"
+    value="${bus}" oninput="window._ptCotBus=this.value;moduleLoaders['pt-cotizaciones']()">
+  <select class="form-input" style="width:auto" onchange="window._ptCotEst=this.value;moduleLoaders['pt-cotizaciones']()">
+    <option value="">Todos los estados</option>
+    ${Object.keys(PT_COT_ESTADOS).map(s=>`<option${filtEst===s?' selected':''}>${s}</option>`).join('')}
+  </select>
+  ${(bus||filtEst)?`<button class="btn btn-sm btn-outline" onclick="window._ptCotBus='';window._ptCotEst='';moduleLoaders['pt-cotizaciones']()">✕ Limpiar</button>`:''}
+</div>
+<div style="margin-bottom:12px">${btnExport('pt-cotizaciones','Cotizaciones')}</div>
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Nº</th><th>Proveedor/Taller</th><th>Vehículo</th><th>Fecha</th>
+    <th>Vencimiento</th><th>Total</th><th>Estado</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${vis.length===0?`<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text2)">Sin cotizaciones</td></tr>`:
+    vis.map(r=>{
+      const venc = r.fecha_vencimiento && r.fecha_vencimiento<hoy && !['Aprobada','Rechazada','Vencida'].includes(r.estado);
+      return `<tr${venc?' style="background:rgba(239,68,68,.05)"':''}>
+        <td><b>${r.numero||'—'}</b></td>
+        <td>${r.pt_talleres?.nombre||r.proveedores?.nombre||'—'}</td>
+        <td>${r.vehiculos?.ficha||'—'}</td>
+        <td>${r.fecha_emision}</td>
+        <td style="color:${venc?'#ef4444':'inherit'}">${r.fecha_vencimiento||'—'}${venc?' ⚠':''}</td>
+        <td><b>${fmtMoney(r.total)}</b></td>
+        <td><span style="color:${PT_COT_ESTADOS[r.estado]||'var(--text)'};font-weight:600">${r.estado}</span></td>
+        <td style="white-space:nowrap">
+          ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="verDetalleCot('${r.id}')">👁</button>
+           <button class="btn btn-sm btn-outline" onclick="editarEstCot('${r.id}')">✏️</button>
+           <button class="btn btn-sm btn-outline btn-danger" onclick="eliminarPtCot('${r.id}')">🗑</button>`:'—'}
+        </td>
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormPtCot = async function(id){
+      const c = id ? (cache.pt_cotizaciones||[]).find(x=>x.id===id)||{} : {};
+      const [{data:provs},{data:talleres},{data:vehis}] = await Promise.all([
+        sb.from('proveedores').select('id,nombre').eq('estado_prov','Activo').order('nombre'),
+        sb.from('pt_talleres').select('id,nombre').eq('estado','Activo').order('nombre'),
+        sb.from('vehiculos').select('id,ficha,placa').order('ficha'),
+      ]);
+      const numCot = 'COT-'+Date.now().toString().slice(-6);
+      openModal('pt-cot-form', id?'Editar Cotización':'Nueva Cotización', `
+<div style="max-height:60vh;overflow-y:auto;padding-right:4px">
+  <div class="form-grid">
+    <label>Nº Cotización<input id="pc-num" value="${c.numero||numCot}"></label>
+    <label>Estado<select id="pc-est">
+      ${Object.keys(PT_COT_ESTADOS).map(s=>`<option${(c.estado||'Recibida')===s?' selected':''}>${s}</option>`).join('')}
+    </select></label>
+    <label>Proveedor<select id="pc-prov">
+      <option value="">— Seleccionar —</option>
+      ${(provs||[]).map(p=>`<option value="${p.id}"${c.proveedor_id===p.id?' selected':''}>${p.nombre}</option>`).join('')}
+    </select></label>
+    <label>Taller<select id="pc-tall">
+      <option value="">— Seleccionar —</option>
+      ${(talleres||[]).map(t=>`<option value="${t.id}"${c.taller_id===t.id?' selected':''}>${t.nombre}</option>`).join('')}
+    </select></label>
+    <label>Vehículo<select id="pc-veh">
+      <option value="">— Sin vehículo —</option>
+      ${(vehis||[]).map(v=>`<option value="${v.id}"${c.vehiculo_id===v.id?' selected':''}>${v.ficha}${v.placa?' ('+v.placa+')':''}</option>`).join('')}
+    </select></label>
+    <label>Fecha emisión<input type="date" id="pc-fem" value="${c.fecha_emision||new Date().toISOString().slice(0,10)}"></label>
+    <label>Fecha vencimiento<input type="date" id="pc-fven" value="${c.fecha_vencimiento||''}"></label>
+    <label>Tiempo entrega<input id="pc-tent" value="${c.tiempo_entrega||''}"></label>
+    <label>Garantía<input id="pc-gar" value="${c.garantia||''}"></label>
+    <label style="grid-column:span 2">Descripción de servicios<textarea id="pc-desc" rows="2">${c.descripcion||''}</textarea></label>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px">
+    <label>Subtotal<input type="number" id="pc-sub" value="${c.subtotal||0}" min="0" step="0.01" oninput="calcTotalCot()"></label>
+    <label>Mano de obra<input type="number" id="pc-mob" value="${c.mano_obra||0}" min="0" step="0.01" oninput="calcTotalCot()"></label>
+    <label>Descuento<input type="number" id="pc-desc2" value="${c.descuento||0}" min="0" step="0.01" oninput="calcTotalCot()"></label>
+    <label>ITBIS (18%)<input type="number" id="pc-itbis" value="${c.itbis||0}" min="0" step="0.01" oninput="calcTotalCot()"></label>
+  </div>
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:8px">
+    <button class="btn btn-sm btn-outline" type="button" onclick="calcTotalCot(true)">Calcular ITBIS automático</button>
+    <span style="font-size:1rem;font-weight:700">Total: <span id="pc-total-disp" style="color:var(--gold)">${fmtMoney(c.total||0)}</span></span>
+  </div>
+  <label style="margin-top:8px;display:block">Observaciones<textarea id="pc-obs" rows="2">${c.observaciones||''}</textarea></label>
+</div>`,
+        [{label:'Guardar',action:async()=>{
+          const sub = Number(document.getElementById('pc-sub').value)||0;
+          const mob = Number(document.getElementById('pc-mob').value)||0;
+          const desc = Number(document.getElementById('pc-desc2').value)||0;
+          const itbis = Number(document.getElementById('pc-itbis').value)||0;
+          const total = sub + mob - desc + itbis;
+          const payload = {
+            numero:           document.getElementById('pc-num').value.trim(),
+            proveedor_id:     document.getElementById('pc-prov').value||null,
+            taller_id:        document.getElementById('pc-tall').value||null,
+            vehiculo_id:      document.getElementById('pc-veh').value||null,
+            fecha_emision:    document.getElementById('pc-fem').value,
+            fecha_vencimiento:document.getElementById('pc-fven').value||null,
+            descripcion:      document.getElementById('pc-desc').value.trim()||null,
+            tiempo_entrega:   document.getElementById('pc-tent').value.trim()||null,
+            garantia:         document.getElementById('pc-gar').value.trim()||null,
+            subtotal: sub, mano_obra: mob, descuento: desc, itbis, total,
+            estado:           document.getElementById('pc-est').value,
+            observaciones:    document.getElementById('pc-obs').value.trim()||null,
+          };
+          let err;
+          if(id){ ({error:err}=await sb.from('pt_cotizaciones').update(payload).eq('id',id)); }
+          else   { ({error:err}=await sb.from('pt_cotizaciones').insert(payload)); }
+          if(err){ toast('Error: '+err.message,'error'); return; }
+          cache.pt_cotizaciones=null; closeModal(); toast('Cotización guardada','success');
+          moduleLoaders['pt-cotizaciones']();
+        }}]);
+      window.calcTotalCot = function(auto){
+        const sub = Number(document.getElementById('pc-sub').value)||0;
+        const mob = Number(document.getElementById('pc-mob').value)||0;
+        const desc = Number(document.getElementById('pc-desc2').value)||0;
+        if(auto){
+          const base = sub+mob-desc;
+          const itbis = Math.round(base*0.18*100)/100;
+          document.getElementById('pc-itbis').value = itbis;
+        }
+        const itbis = Number(document.getElementById('pc-itbis').value)||0;
+        const total = sub+mob-desc+itbis;
+        const el2 = document.getElementById('pc-total-disp');
+        if(el2) el2.textContent = fmtMoney(total);
+      };
+    };
+
+    window.verDetalleCot = async function(id){
+      const c = (cache.pt_cotizaciones||[]).find(x=>x.id===id)||{};
+      const {data:items} = await sb.from('pt_cotizaciones_items').select('*').eq('cotizacion_id',id);
+      openModal('pt-det-cot','Detalle Cotización '+( c.numero||''), `
+<div style="font-size:.85rem">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+    ${[['Proveedor/Taller',c.pt_talleres?.nombre||c.proveedores?.nombre],['Vehículo',c.vehiculos?.ficha],
+       ['Emisión',c.fecha_emision],['Vencimiento',c.fecha_vencimiento],
+       ['Estado',c.estado],['Garantía',c.garantia],['Entrega',c.tiempo_entrega]]
+      .map(([l,v])=>`<div><span style="color:var(--text2)">${l}</span><div style="font-weight:500">${v||'—'}</div></div>`).join('')}
+  </div>
+  ${c.descripcion?`<div style="padding:8px;background:var(--bg3);border-radius:6px;margin-bottom:10px">${c.descripcion}</div>`:''}
+  ${(items||[]).length>0?`
+  <div class="table-wrap" style="margin-bottom:10px">
+  <table class="data-table"><thead><tr><th>Descripción</th><th>Cant.</th><th>P.Unit.</th><th>Subtotal</th></tr></thead>
+  <tbody>${items.map(i=>`<tr><td>${i.descripcion}</td><td>${i.cantidad}</td><td>${fmtMoney(i.precio_unitario)}</td><td>${fmtMoney(i.subtotal)}</td></tr>`).join('')}</tbody>
+  </table></div>`:''}
+  <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:.85rem">
+    <span>Subtotal: ${fmtMoney(c.subtotal)}</span>
+    <span>Mano de obra: ${fmtMoney(c.mano_obra)}</span>
+    ${c.descuento>0?`<span style="color:#22c55e">Descuento: -${fmtMoney(c.descuento)}</span>`:''}
+    <span>ITBIS: ${fmtMoney(c.itbis)}</span>
+    <span style="font-size:1.1rem;font-weight:700;color:var(--gold)">Total: ${fmtMoney(c.total)}</span>
+  </div>
+</div>`,
+        [{label:'Editar',action:()=>{ closeModal(); setTimeout(()=>abrirFormPtCot(id),100); }}]);
+    };
+
+    window.editarEstCot = function(id){ abrirFormPtCot(id); };
+
+    window.eliminarPtCot = async function(id){
+      if(!confirm('¿Eliminar cotización?')) return;
+      await sb.from('pt_cotizaciones_items').delete().eq('cotizacion_id',id);
+      const {error} = await sb.from('pt_cotizaciones').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.pt_cotizaciones=null; toast('Eliminada','success'); moduleLoaders['pt-cotizaciones']();
+    };
+  } catch(e){ el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── PT-5. EVALUACIONES ────────────────────────────────────
+moduleLoaders['pt-evaluaciones'] = async function(){
+  const el = document.getElementById('mod-pt-evaluaciones');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data, error} = await sb.from('pt_evaluaciones')
+      .select('*,proveedores(nombre,tipo_proveedor)')
+      .order('fecha',{ascending:false});
+    if(error) throw error;
+    cache.pt_evaluaciones = data;
+    const rows = data||[];
+
+    // Resumen por proveedor
+    const resumenMap = {};
+    rows.forEach(e=>{
+      if(!resumenMap[e.proveedor_id]) resumenMap[e.proveedor_id]={nombre:e.proveedores?.nombre||'—',evals:[],tipo:e.proveedores?.tipo_proveedor};
+      resumenMap[e.proveedor_id].evals.push(e);
+    });
+    const ranking = Object.entries(resumenMap).map(([id,r])=>{
+      const prom = r.evals.reduce((s,e)=>{
+        return s + ((Number(e.calidad_trabajo||0)+Number(e.cumplimiento_plazos||0)+Number(e.precio_calidad||0)+
+                     Number(e.cumplimiento_garantia||0)+Number(e.atencion||0)+Number(e.disponibilidad||0))/6);
+      },0)/r.evals.length;
+      return {id,nombre:r.nombre,tipo:r.tipo,prom:prom.toFixed(1),n:r.evals.length};
+    }).sort((a,b)=>b.prom-a.prom);
+
+    el.innerHTML = `
+<div class="module-header">
+  <h2>⭐ Evaluación de Proveedores</h2>
+  ${!esViewer()?`<button class="btn" onclick="abrirFormPtEval()">+ Nueva Evaluación</button>`:''}
+</div>
+
+${ranking.length>0?`
+<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">
+  <h4 style="font-size:.85rem;color:var(--text2);margin-bottom:10px">Ranking de Proveedores</h4>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${ranking.slice(0,8).map((r,i)=>{
+      const col = r.prom>=4?'#22c55e':r.prom>=3?'#f59e0b':'#ef4444';
+      return `<div style="display:flex;align-items:center;gap:10px;font-size:.85rem">
+        <span style="color:var(--text2);width:20px;text-align:right">${i+1}.</span>
+        <span style="flex:1">${r.nombre}<span style="color:var(--text2);font-size:.75rem;margin-left:4px">${r.tipo||''}</span></span>
+        <span style="color:${col};font-weight:700">${r.prom}/5</span>
+        <span style="color:var(--text2);font-size:.75rem">(${r.n} eval.)</span>
+        <div style="width:80px;background:var(--bg3);border-radius:4px;height:5px">
+          <div style="background:${col};width:${Math.round(r.prom/5*100)}%;height:5px;border-radius:4px"></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+</div>`:''}
+
+<div class="table-wrap">
+<table class="data-table">
+  <thead><tr>
+    <th>Fecha</th><th>Proveedor</th><th>Calidad</th><th>Plazos</th><th>Precio</th>
+    <th>Garantía</th><th>Atención</th><th>Disponib.</th><th>Prom.</th><th>Acciones</th>
+  </tr></thead>
+  <tbody>
+  ${rows.length===0?`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text2)">Sin evaluaciones registradas</td></tr>`:
+    rows.map(r=>{
+      const prom = ((Number(r.calidad_trabajo||0)+Number(r.cumplimiento_plazos||0)+Number(r.precio_calidad||0)+Number(r.cumplimiento_garantia||0)+Number(r.atencion||0)+Number(r.disponibilidad||0))/6).toFixed(1);
+      const col = prom>=4?'#22c55e':prom>=3?'#f59e0b':'#ef4444';
+      const stars = v => '★'.repeat(v||0)+'☆'.repeat(5-(v||0));
+      return `<tr>
+        <td>${r.fecha}</td>
+        <td><b>${r.proveedores?.nombre||'—'}</b></td>
+        <td style="color:#f0a500">${stars(r.calidad_trabajo)}</td>
+        <td style="color:#f0a500">${stars(r.cumplimiento_plazos)}</td>
+        <td style="color:#f0a500">${stars(r.precio_calidad)}</td>
+        <td style="color:#f0a500">${stars(r.cumplimiento_garantia)}</td>
+        <td style="color:#f0a500">${stars(r.atencion)}</td>
+        <td style="color:#f0a500">${stars(r.disponibilidad)}</td>
+        <td><span style="color:${col};font-weight:700">${prom}</span></td>
+        <td>${!esViewer()?`<button class="btn btn-sm btn-outline btn-danger" onclick="eliminarPtEval('${r.id}')">🗑</button>`:'—'}</td>
+      </tr>`;
+    }).join('')}
+  </tbody>
+</table></div>`;
+
+    window.abrirFormPtEval = async function(){
+      const {data:provs} = await sb.from('proveedores').select('id,nombre').eq('estado_prov','Activo').order('nombre');
+      const criterios = [
+        ['calidad_trabajo','Calidad del trabajo'],
+        ['cumplimiento_plazos','Cumplimiento de plazos'],
+        ['precio_calidad','Precio / calidad'],
+        ['cumplimiento_garantia','Cumplimiento de garantía'],
+        ['atencion','Calidad de atención'],
+        ['disponibilidad','Disponibilidad'],
+      ];
+      openModal('pt-eval-form','Nueva Evaluación de Proveedor', `
+<div class="form-grid">
+  <label style="grid-column:span 2">Proveedor *<select id="pev-prov">
+    <option value="">— Seleccionar —</option>
+    ${(provs||[]).map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')}
+  </select></label>
+  <label>Fecha<input type="date" id="pev-fecha" value="${new Date().toISOString().slice(0,10)}"></label>
+  <label>Evaluado por<input id="pev-por" placeholder="Nombre del evaluador"></label>
+</div>
+<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+  ${criterios.map(([key,lbl])=>`
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="flex:1;font-size:.85rem">${lbl}</span>
+      <div style="display:flex;gap:4px">
+        ${[1,2,3,4,5].map(n=>`
+          <label style="cursor:pointer;display:flex;align-items:center">
+            <input type="radio" name="${key}" value="${n}" style="display:none" class="pev-star" data-key="${key}">
+            <span class="pev-star-lbl" data-key="${key}" data-val="${n}" style="font-size:1.4rem;color:#555;cursor:pointer"
+              onclick="setEvalStar('${key}',${n})">★</span>
+          </label>`).join('')}
+      </div>
+      <span id="pev-val-${key}" style="font-size:.8rem;color:var(--gold);width:30px">—</span>
+    </div>`).join('')}
+</div>
+<label style="margin-top:10px;display:block">Comentarios<textarea id="pev-com" rows="3" placeholder="Observaciones sobre este proveedor…"></textarea></label>`,
+        [{label:'Guardar',action:async()=>{
+          const pid = document.getElementById('pev-prov').value;
+          if(!pid){ toast('Selecciona un proveedor','error'); return; }
+          const payload = {
+            proveedor_id:          pid,
+            fecha:                 document.getElementById('pev-fecha').value,
+            evaluado_por:          document.getElementById('pev-por').value.trim()||null,
+            comentarios:           document.getElementById('pev-com').value.trim()||null,
+          };
+          criterios.forEach(([key])=>{
+            const val = document.querySelector(`input[name="${key}"]:checked`);
+            payload[key] = val ? Number(val.value) : null;
+          });
+          const {error} = await sb.from('pt_evaluaciones').insert(payload);
+          if(error){ toast('Error: '+error.message,'error'); return; }
+          cache.pt_evaluaciones=null; closeModal(); toast('Evaluación guardada','success');
+          moduleLoaders['pt-evaluaciones']();
+        }}]);
+      window.setEvalStar = function(key, val){
+        document.querySelector(`input[name="${key}"][value="${val}"]`).checked = true;
+        document.querySelectorAll(`.pev-star-lbl[data-key="${key}"]`).forEach(s=>{
+          s.style.color = Number(s.dataset.val)<=val ? '#f0a500' : '#555';
+        });
+        const disp = document.getElementById('pev-val-'+key);
+        if(disp) disp.textContent = val+'/5';
+      };
+    };
+    window.eliminarPtEval = async function(id){
+      if(!confirm('¿Eliminar evaluación?')) return;
+      const {error} = await sb.from('pt_evaluaciones').delete().eq('id',id);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      cache.pt_evaluaciones=null; toast('Eliminada','success'); moduleLoaders['pt-evaluaciones']();
+    };
+  } catch(e){ el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`; }
+};
 
 // ══════════════════════════════════════════════════════════
 // MINI TRUCKS — 10 SUB-MÓDULOS
