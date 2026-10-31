@@ -242,6 +242,43 @@ tbody td{padding:10px 12px;color:var(--text)}
 .form-group textarea{resize:vertical;min-height:70px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
+/* ── KANBAN BOARD ───────────────────────────────────────── */
+.kanban-board{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.kanban-col{flex:0 0 250px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.kanban-col-hdr{padding:11px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);border-top:3px solid var(--k-col,var(--border))}
+.kanban-col-title{font-size:.78rem;font-weight:700}
+.kanban-col-count{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text2)}
+.kanban-cards{padding:8px;display:flex;flex-direction:column;gap:7px;min-height:60px;max-height:62vh;overflow-y:auto;scrollbar-width:thin}
+.kanban-card{background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--k-color,var(--border));border-radius:8px;padding:11px;cursor:pointer;transition:.15s}
+.kanban-card:hover{border-color:rgba(233,165,0,.4);box-shadow:0 2px 10px rgba(0,0,0,.35);transform:translateY(-1px)}
+.kanban-card-num{font-size:.7rem;color:var(--gold);font-weight:700;font-family:'DM Mono',monospace}
+.kanban-card-veh{font-size:.82rem;font-weight:600;margin:4px 0 2px;color:var(--text)}
+.kanban-card-tipo{font-size:.76rem;color:var(--text2);line-height:1.3}
+.kanban-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:.72rem;color:var(--text2)}
+.kanban-card-cost{color:var(--gold);font-weight:600}
+.kanban-empty{padding:16px;text-align:center;font-size:.78rem;color:var(--text2);opacity:.5}
+
+/* ── VEHICLE / CONDUCTOR CARD GRID ─────────────────────── */
+.veh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.veh-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:15px;transition:.15s;position:relative;overflow:hidden}
+.veh-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--vc-color,var(--border))}
+.veh-card:hover{border-color:rgba(233,165,0,.25);box-shadow:0 4px 16px rgba(0,0,0,.3)}
+.veh-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.veh-card-avatar{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;font-family:'DM Mono',monospace;background:rgba(233,165,0,.12);color:var(--gold);flex-shrink:0}
+.veh-card-ficha{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:700;color:var(--gold);line-height:1}
+.veh-card-placa{font-size:.7rem;color:var(--text2);margin-top:2px}
+.veh-card-row{font-size:.78rem;color:var(--text2);display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(26,34,53,.5)}
+.veh-card-row:last-child{border-bottom:none}
+.veh-card-row span:last-child{color:var(--text);font-weight:500;text-align:right;max-width:60%}
+.veh-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+.veh-card-actions{display:flex;gap:4px}
+
+/* ── VIEW TOGGLE ────────────────────────────────────────── */
+.view-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
+.view-toggle-btn{padding:5px 10px;border:none;background:transparent;color:var(--text2);font-size:.75rem;cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
+.view-toggle-btn:hover{color:var(--text)}
+.view-toggle-btn.active{background:var(--bg2);color:var(--gold);font-weight:600}
+
 /* TOAST */
 #toast-container{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:10px 16px;border-radius:8px;font-size:.85rem;color:#fff;animation:slideIn .3s ease;max-width:320px}
@@ -1309,7 +1346,11 @@ function renderVehiculos() {
     <h2>Vehículos</h2>
     <span class="breadcrumb">Flota · ${(cache.vehiculos||[]).length} unidades registradas</span>
   </div>
-  <div style="display:flex;gap:8px">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div class="view-toggle">
+      <button class="view-toggle-btn${`${(window._vehView||'tabla')==='tabla'?' active':''}`}" onclick="window._vehView='tabla';renderVehiculos()">≡ Tabla</button>
+      <button class="view-toggle-btn${`${(window._vehView||'tabla')==='grid'?' active':''}`}" onclick="window._vehView='grid';renderVehiculos()">⊞ Grid</button>
+    </div>
     ${btnExport('vehiculos','Vehiculos')}
     ${!esViewer()?'<button class="btn btn-gold btn-sm" onclick="openVehModal()">+ Nuevo vehículo</button>':''}
   </div>
@@ -1337,17 +1378,45 @@ function renderVehiculos() {
     <div class="sub">Unidades totales</div>
   </div>
 </div>
+<!-- toolbar compartido -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+  <input class="form-input" style="flex:1;min-width:200px" placeholder="Buscar ficha, placa, marca, conductor…" value="${escHtml(vehFiltro)}"
+    oninput="vehFiltro=this.value;vehPage=1;renderVehiculos()">
+  <select class="form-input" style="width:auto" onchange="vehFiltro=this.value;vehPage=1;renderVehiculos()">
+    <option value="">Estado: Todos</option>
+    <option>Activo</option><option>Inactivo</option><option>Taller</option>
+  </select>
+</div>
 
+${(window._vehView||'tabla')==='grid' ? `
+<div class="veh-grid">
+  ${rows.length ? rows.map(v=>{
+    const col = v.estado==='Activo'||v.estado==='activo'?'#22c55e':v.estado==='Taller'||v.estado==='taller'?'#f59e0b':'#94a3b8';
+    return `<div class="veh-card" style="--vc-color:${col}">
+      <div class="veh-card-top">
+        <div class="veh-card-avatar">${(v.ficha||'?').slice(0,4)}</div>
+        <div>
+          <div class="veh-card-ficha">${escHtml(v.ficha)}</div>
+          <div class="veh-card-placa">${escHtml(v.placa||'—')}</div>
+        </div>
+        ${badgeEstado(v.estado)}
+      </div>
+      <div class="veh-card-row"><span>Marca/Modelo</span><span>${escHtml(v.marca)} ${escHtml(v.modelo||'')} ${v.anio||''}</span></div>
+      <div class="veh-card-row"><span>Conductor</span><span>${escHtml(v.conductor||'—')}</span></div>
+      <div class="veh-card-row"><span>Campamento</span><span>${escHtml(campMap[v.campamento_id]||'—')}</span></div>
+      <div class="veh-card-footer">
+        <span style="font-size:.7rem;color:var(--text2)">${escHtml(v.color||'')} ${escHtml(v.municipio||'')} </span>
+        <div class="veh-card-actions">
+          ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="openVehModal(${v.id})">&#9999;&#65039;</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteVeh(${v.id})">&#128465;</button>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text2)">Sin resultados</div>'}
+</div>
+<div style="font-size:.75rem;color:var(--text2);margin-top:8px">${todos.length} vehículos</div>
+` : `
 <div class="table-wrap">
-  <div class="table-toolbar">
-    <input class="search-input" placeholder="Buscar ficha, placa, marca, conductor…" value="${escHtml(vehFiltro)}"
-      oninput="vehFiltro=this.value;vehPage=1;renderVehiculos()" style="flex:1;min-width:200px">
-    <select onchange="vehFiltro=this.value;vehPage=1;renderVehiculos()"
-      style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:.85rem;outline:none">
-      <option value="">Estado: Todos</option>
-      <option>Activo</option><option>Inactivo</option><option>Taller</option>
-    </select>
-  </div>
   <table>
     <thead><tr>
       <th>Ficha</th><th>Placa</th><th>Marca / Modelo</th><th>Año</th>
@@ -1365,20 +1434,20 @@ function renderVehiculos() {
         <td>${badgeEstado(v.estado)}</td>
         <td>
           <div style="display:flex;gap:4px">
-            ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="openVehModal(${v.id})" title="Editar">✏️</button>
-            <button class="btn btn-sm btn-danger" onclick="deleteVeh(${v.id})" title="Eliminar">🗑</button>`:'—'}
+            ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="openVehModal(${v.id})" title="Editar">&#9999;&#65039;</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteVeh(${v.id})" title="Eliminar">&#128465;</button>`:''}
           </div>
         </td>
       </tr>`).join('') : '<tr><td colspan="8" class="empty-state">Sin resultados</td></tr>'}
     </tbody>
   </table>
   <div class="pagination">
-    <button onclick="vehPage=Math.max(1,vehPage-1);renderVehiculos()">‹ Anterior</button>
+    <button onclick="vehPage=Math.max(1,vehPage-1);renderVehiculos()">&lsaquo; Anterior</button>
     <span>Página ${vehPage} de ${pages}</span>
-    <button onclick="vehPage=Math.min(${pages},vehPage+1);renderVehiculos()">Siguiente ›</button>
+    <button onclick="vehPage=Math.min(${pages},vehPage+1);renderVehiculos()">Siguiente &rsaquo;</button>
     <span style="margin-left:auto;color:var(--text2);font-size:.8rem">${todos.length} registros</span>
   </div>
-</div>`;
+</div>`}`;
 }
 
 function badgeCat(c){
@@ -2084,6 +2153,10 @@ moduleLoaders.reparaciones = async function(){
     <span class="breadcrumb">Mantenimiento · ${rows.length} órdenes en total</span>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <div class="view-toggle">
+      <button class="view-toggle-btn${(window._repView||'tabla')==='tabla'?' active':''}" onclick="window._repView='tabla';moduleLoaders.reparaciones()">≡ Tabla</button>
+      <button class="view-toggle-btn${(window._repView||'tabla')==='kanban'?' active':''}" onclick="window._repView='kanban';moduleLoaders.reparaciones()">📌 Kanban</button>
+    </div>
     ${btnExport('reparaciones','Reparaciones')}
     ${!esViewer()?`<button class="btn btn-gold btn-sm" onclick="openRepModal()">+ Nueva orden</button>`:''}
   </div>
@@ -2154,7 +2227,40 @@ moduleLoaders.reparaciones = async function(){
   </div>
 </div>
 
-<!-- Tabla -->
+${(window._repView||'tabla')==='kanban' ? (() => {
+  const kanCols = [
+    {id:'Pendiente',    label:'Pendiente',    color:'#f59e0b'},
+    {id:'En proceso',   label:'En proceso',   color:'#3b82f6'},
+    {id:'Completado',   label:'Completado',   color:'#22c55e'},
+  ];
+  const prioColor = {Alta:'#ef4444',Media:'#f59e0b',Baja:'#22c55e'};
+  return `<div class="kanban-board">${kanCols.map(col=>{
+    const cards = rowsFiltFinal.filter(r=>r.estado===col.id);
+    return \`<div class="kanban-col" style="--k-col:\${col.color}">
+      <div class="kanban-col-hdr">
+        <span class="kanban-col-title" style="color:\${col.color}">\${col.label}</span>
+        <span class="kanban-col-count">\${cards.length}</span>
+      </div>
+      <div class="kanban-cards">
+        \${cards.length===0?'<div class="kanban-empty">Sin órdenes</div>':
+          cards.map(r=>\`<div class="kanban-card" style="--k-color:\${prioColor[r.prioridad]||'var(--border)'}">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span class="kanban-card-num">\${escHtml(r.numero_orden||'—')}</span>
+              \${r.prioridad?'<span style="font-size:.68rem;font-weight:700;color:'+prioColor[r.prioridad]+'">'+r.prioridad+'</span>':''}
+            </div>
+            <div class="kanban-card-veh">\${escHtml(vMap[r.vehiculo_id]||'—')}</div>
+            <div class="kanban-card-tipo">\${escHtml(r.tipo||'—')}\${r.taller?'<br><span style="font-size:.7rem">'+escHtml(r.taller)+'</span>':''}</div>
+            <div class="kanban-card-footer">
+              <span>\${r.tecnico_asignado?escHtml(r.tecnico_asignado):'Sin técnico'}</span>
+              <span class="kanban-card-cost">\${fmtMoney(r.coste)}</span>
+            </div>
+            \${r.fecha_estimada?'<div style="font-size:.68rem;color:var(--text2);margin-top:4px">📅 '+fmtDate(r.fecha_estimada)+'</div>':''}
+            \${!esViewer()?'<div style="margin-top:6px;display:flex;gap:4px"><button class=\"btn btn-sm btn-outline\" style=\"font-size:.68rem;padding:3px 8px\" onclick=\"openRepModal('+r.id+')\" >✏️</button><select onchange=\"cambiarEstadoRep('+r.id+',this.value,this)\" style=\"font-size:.68rem;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px\"><option value=\"\">Mover a…</option>'+['Pendiente','En proceso','Completado'].filter(e=>e!==r.estado).map(e=>'<option>'+e+'</option>').join('')+'</select></div>':''}
+          </div>\`).join('')}
+      </div>
+    </div>\`;
+  }).join('')}</div>`;
+})() : `<!-- Tabla -->
 <div class="table-wrap"><table>
   <thead><tr>
     <th>Orden</th><th>Vehículo</th><th>Trabajo / Taller</th>
@@ -2198,7 +2304,7 @@ moduleLoaders.reparaciones = async function(){
       ${filtrosActivos?'Sin resultados para los filtros aplicados — <button class="btn btn-sm btn-outline" onclick="window._repFiltroEstado=\'\';window._repFiltroPrio=\'\';window._repFiltroCat=\'\';window._repFiltroBus=\'\';moduleLoaders.reparaciones()">Limpiar filtros</button>':'Sin órdenes registradas'}
     </td></tr>`}
   </tbody>
-</table></div>`;
+</table></div>` }`;
 
     // ── Ver historial de cambios de estado ──
     window.verRepHistorial = async function(repId){
