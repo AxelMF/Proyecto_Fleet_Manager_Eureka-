@@ -2146,6 +2146,49 @@ moduleLoaders.reparaciones = async function(){
 
     const filtrosActivos = [fEst,fPri,fCat,fBus].filter(Boolean).length;
 
+    function _buildRepKanban(rows, vMap) {
+      const K = [{id:'Pendiente',c:'#f59e0b'},{id:'En proceso',c:'#3b82f6'},{id:'Completado',c:'#22c55e'}];
+      const P = {Alta:'#ef4444',Media:'#f59e0b',Baja:'#22c55e'};
+      let h = '<div class="kanban-board">';
+      K.forEach(col=>{
+        const cards = rows.filter(r=>r.estado===col.id);
+        h += '<div class="kanban-col"><div class="kanban-col-hdr" style="--k-col:'+col.c+'">'
+           + '<span class="kanban-col-title" style="color:'+col.c+'">'+escHtml(col.id)+'</span>'
+           + '<span class="kanban-col-count">'+cards.length+'</span></div>'
+           + '<div class="kanban-cards">';
+        if(!cards.length){
+          h += '<div class="kanban-empty">Sin órdenes</div>';
+        } else {
+          cards.forEach(r=>{
+            const kc = P[r.prioridad]||'var(--border)';
+            h += '<div class="kanban-card" style="--k-color:'+kc+'">'
+               + '<div style="display:flex;justify-content:space-between;align-items:center">'
+               + '<span class="kanban-card-num">'+escHtml(r.numero_orden||'—')+'</span>'
+               + (r.prioridad?'<span style="font-size:.68rem;font-weight:700;color:'+kc+'">'+r.prioridad+'</span>':'')
+               + '</div>'
+               + '<div class="kanban-card-veh">'+escHtml(vMap[r.vehiculo_id]||'—')+'</div>'
+               + '<div class="kanban-card-tipo">'+escHtml(r.tipo||'—')
+               + (r.taller?'<br><span style="font-size:.7rem">'+escHtml(r.taller)+'</span>':'')+'</div>'
+               + '<div class="kanban-card-footer">'
+               + '<span>'+(r.tecnico_asignado?escHtml(r.tecnico_asignado):'Sin técnico')+'</span>'
+               + '<span class="kanban-card-cost">'+fmtMoney(r.coste)+'</span></div>';
+            if(r.fecha_estimada) h += '<div style="font-size:.68rem;color:var(--text2);margin-top:4px">📅 '+fmtDate(r.fecha_estimada)+'</div>';
+            if(!esViewer()){
+              h += '<div style="margin-top:6px;display:flex;gap:4px">'
+                 + '<button class="btn btn-sm btn-outline" style="font-size:.68rem;padding:3px 8px" onclick="openRepModal('+r.id+')">&#9999;</button>'
+                 + '<select onchange="cambiarEstadoRep('+r.id+',this.value,this)" style="font-size:.68rem;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px">'
+                 + '<option value="">Mover a…</option>'
+                 + ['Pendiente','En proceso','Completado'].filter(e=>e!==r.estado).map(e=>'<option>'+e+'</option>').join('')
+                 + '</select></div>';
+            }
+            h += '</div>';
+          });
+        }
+        h += '</div></div>';
+      });
+      h += '</div>';
+      return h;
+    }
     el.innerHTML=`
 <div class="module-header">
   <div class="module-header-left">
@@ -2227,40 +2270,7 @@ moduleLoaders.reparaciones = async function(){
   </div>
 </div>
 
-${(window._repView||'tabla')==='kanban' ? (() => {
-  const kanCols = [
-    {id:'Pendiente',    label:'Pendiente',    color:'#f59e0b'},
-    {id:'En proceso',   label:'En proceso',   color:'#3b82f6'},
-    {id:'Completado',   label:'Completado',   color:'#22c55e'},
-  ];
-  const prioColor = {Alta:'#ef4444',Media:'#f59e0b',Baja:'#22c55e'};
-  return `<div class="kanban-board">${kanCols.map(col=>{
-    const cards = rowsFiltFinal.filter(r=>r.estado===col.id);
-    return \`<div class="kanban-col" style="--k-col:\${col.color}">
-      <div class="kanban-col-hdr">
-        <span class="kanban-col-title" style="color:\${col.color}">\${col.label}</span>
-        <span class="kanban-col-count">\${cards.length}</span>
-      </div>
-      <div class="kanban-cards">
-        \${cards.length===0?'<div class="kanban-empty">Sin órdenes</div>':
-          cards.map(r=>\`<div class="kanban-card" style="--k-color:\${prioColor[r.prioridad]||'var(--border)'}">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span class="kanban-card-num">\${escHtml(r.numero_orden||'—')}</span>
-              \${r.prioridad?'<span style="font-size:.68rem;font-weight:700;color:'+prioColor[r.prioridad]+'">'+r.prioridad+'</span>':''}
-            </div>
-            <div class="kanban-card-veh">\${escHtml(vMap[r.vehiculo_id]||'—')}</div>
-            <div class="kanban-card-tipo">\${escHtml(r.tipo||'—')}\${r.taller?'<br><span style="font-size:.7rem">'+escHtml(r.taller)+'</span>':''}</div>
-            <div class="kanban-card-footer">
-              <span>\${r.tecnico_asignado?escHtml(r.tecnico_asignado):'Sin técnico'}</span>
-              <span class="kanban-card-cost">\${fmtMoney(r.coste)}</span>
-            </div>
-            \${r.fecha_estimada?'<div style="font-size:.68rem;color:var(--text2);margin-top:4px">📅 '+fmtDate(r.fecha_estimada)+'</div>':''}
-            \${!esViewer()?'<div style="margin-top:6px;display:flex;gap:4px"><button class=\"btn btn-sm btn-outline\" style=\"font-size:.68rem;padding:3px 8px\" onclick=\"openRepModal('+r.id+')\" >✏️</button><select onchange=\"cambiarEstadoRep('+r.id+',this.value,this)\" style=\"font-size:.68rem;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:3px 6px\"><option value=\"\">Mover a…</option>'+['Pendiente','En proceso','Completado'].filter(e=>e!==r.estado).map(e=>'<option>'+e+'</option>').join('')+'</select></div>':''}
-          </div>\`).join('')}
-      </div>
-    </div>\`;
-  }).join('')}</div>`;
-})() : `<!-- Tabla -->
+${(window._repView||'tabla')==='kanban' ? _buildRepKanban(rowsFiltFinal,vMap) : `<!-- Tabla -->
 <div class="table-wrap"><table>
   <thead><tr>
     <th>Orden</th><th>Vehículo</th><th>Trabajo / Taller</th>
