@@ -656,6 +656,7 @@ tbody td{padding:10px 12px;color:var(--text)}
       <button class="snav-item" data-mod="mt-herramientas" onclick="nav('mt-herramientas')">🔧 Herramientas</button>
       <button class="snav-item" data-mod="mt-asignaciones" onclick="nav('mt-asignaciones')">📎 Asignaciones</button>
       <button class="snav-item" data-mod="mt-reparaciones" onclick="nav('mt-reparaciones')">🔨 Reparaciones</button>
+      <button class="snav-item" data-mod="mt-hidraulico"   onclick="nav('mt-hidraulico')">⚙️ Hidráulico / Horas</button>
       <button class="snav-item" data-mod="mt-polizas"      onclick="nav('mt-polizas')">📋 Pólizas</button>
       <button class="snav-item" data-mod="mt-novedades"    onclick="nav('mt-novedades')">🪟 Novedades</button>
     </div>
@@ -780,6 +781,7 @@ tbody td{padding:10px 12px;color:var(--text)}
     <div id="mod-mt-reparaciones" class="module"><div class="empty-state">Cargando reparaciones MT…</div></div>
     <div id="mod-mt-polizas" class="module"><div class="empty-state">Cargando pólizas MT…</div></div>
     <div id="mod-mt-novedades" class="module"><div class="empty-state">Cargando novedades MT…</div></div>
+    <div id="mod-mt-hidraulico" class="module"><div class="empty-state">Cargando módulo hidráulico…</div></div>
   </div>
 </div>
 
@@ -888,7 +890,7 @@ const SECTIONS = {
   flota:         ['vehiculos','conductores','campamentos','supervisores','polizas','combustible','novedades'],
   mantenimiento: ['mantenimiento','reparaciones','pinchazos','mecanica','mecanica-dash','historial'],
   inventario:    ['inventario','neumaticos','baterias'],
-  'mini-trucks': ['mt-dashboard','mt-unidades','mt-conductores','mt-combustible','mt-kilometraje','mt-herramientas','mt-asignaciones','mt-reparaciones','mt-polizas','mt-novedades'],
+  'mini-trucks': ['mt-dashboard','mt-unidades','mt-conductores','mt-combustible','mt-kilometraje','mt-herramientas','mt-asignaciones','mt-reparaciones','mt-hidraulico','mt-polizas','mt-novedades'],
   proveedores:   ['pt-dashboard','pt-proveedores','pt-talleres','pt-cotizaciones','pt-evaluaciones'],
   admin:         ['compras','gastos','usuarios','portal-mec'],
 };
@@ -7304,6 +7306,221 @@ moduleLoaders['mt-novedades'] = async function(){
   y selecciona una unidad MT.
 </div>`;
   } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+};
+
+// ── 11. HIDRÁULICO / HORAS DE USO MT ────────────────────────
+moduleLoaders['mt-hidraulico'] = async function(){
+  const el = document.getElementById('mod-mt-hidraulico');
+  el.innerHTML = '<div class="empty-state">Cargando…</div>';
+  try {
+    const {data,error} = await sb.from('vehiculos')
+      .select('id,ficha,placa,modelo,estado,campamento,horas_uso,horas_ultimo_mant_hidraulico,horas_ultimo_cambio_valvulas')
+      .like('ficha','AC-EU-%')
+      .order('ficha');
+    if(error) throw error;
+    const rows = data||[];
+
+    // ── helpers ──────────────────────────────────────────────
+    function estadoHid(h,ult,intervalo){
+      if(!h&&h!==0) return {cls:'badge-gray',txt:'Sin datos',pct:0,faltan:null};
+      const hN=parseFloat(h)||0, uN=parseFloat(ult)||0;
+      const prox=(uN+intervalo), faltan=prox-hN;
+      const pct=Math.min(100,Math.round(((hN-uN)/intervalo)*100));
+      if(faltan<=0) return {cls:'badge-red',txt:'VENCIDO',pct:100,faltan};
+      if(intervalo===50&&faltan<=10) return {cls:'badge-yellow',txt:'Próximo',pct,faltan};
+      if(intervalo===500&&faltan<=50) return {cls:'badge-yellow',txt:'Próximo',pct,faltan};
+      return {cls:'badge-green',txt:'OK',pct,faltan};
+    }
+    function barColor(cls){
+      if(cls==='badge-red') return '#ef4444';
+      if(cls==='badge-yellow') return '#f59e0b';
+      return 'var(--gold)';
+    }
+
+    // ── KPIs ─────────────────────────────────────────────────
+    let kConDatos=0,kMantVenc=0,kMantProx=0,kValvVenc=0,kValvProx=0;
+    rows.forEach(v=>{
+      if(v.horas_uso!=null){
+        kConDatos++;
+        const m=estadoHid(v.horas_uso,v.horas_ultimo_mant_hidraulico,50);
+        const vv=estadoHid(v.horas_uso,v.horas_ultimo_cambio_valvulas,500);
+        if(m.cls==='badge-red') kMantVenc++;
+        else if(m.cls==='badge-yellow') kMantProx++;
+        if(vv.cls==='badge-red') kValvVenc++;
+        else if(vv.cls==='badge-yellow') kValvProx++;
+      }
+    });
+    const kSinDatos=rows.length-kConDatos;
+
+    // ── Tarjetas por unidad ───────────────────────────────────
+    function card(v){
+      const h=v.horas_uso!=null?parseFloat(v.horas_uso):null;
+      const mant=estadoHid(h,v.horas_ultimo_mant_hidraulico,50);
+      const valv=estadoHid(h,v.horas_ultimo_cambio_valvulas,500);
+      const inact=v.estado==='inactivo';
+      const vcColor=inact?'#ef4444':v.estado==='mantenimiento'?'#f59e0b':'var(--gold)';
+      const hDisplay=h!=null?h.toFixed(1)+' h':'Sin datos';
+
+      function barHtml(pct,color,label,faltan,intervalo){
+        const fLabel=faltan==null?'—':faltan<=0?'Vencido +'+Math.abs(faltan).toFixed(0)+'h':'Faltan '+faltan.toFixed(0)+'h';
+        return '<div style="margin-top:10px">'
+          +'<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-bottom:4px">'
+          +'<span style="color:var(--text2);font-weight:600">'+label+'</span>'
+          +'<span style="color:'+color+';font-weight:700">'+fLabel+'</span>'
+          +'</div>'
+          +'<div style="height:7px;background:var(--bg3);border-radius:4px;overflow:hidden">'
+          +'<div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px;transition:.4s"></div>'
+          +'</div>'
+          +'<div style="font-size:.68rem;color:var(--text2);margin-top:3px">Intervalo: cada '+intervalo+' h · último: '+(v['horas_ultimo_'+(intervalo===50?'mant_hidraulico':'cambio_valvulas')]!=null?parseFloat(v['horas_ultimo_'+(intervalo===50?'mant_hidraulico':'cambio_valvulas')]).toFixed(1)+' h':'sin registro')+'</div>'
+          +'</div>';
+      }
+
+      return '<div class="veh-card" style="--vc-color:'+vcColor+'">'
+        +'<div class="veh-card-top">'
+        +'<div class="veh-card-avatar">'+escHtml(v.ficha.replace('AC-EU-',''))+'</div>'
+        +'<div>'
+        +'<div class="veh-card-ficha">'+escHtml(v.ficha)+'</div>'
+        +'<div class="veh-card-placa">'+escHtml(v.placa||'—')+' · '+escHtml(v.campamento||'—')+'</div>'
+        +'</div>'
+        +'<div style="margin-left:auto">'
+        +'<span class="badge '+( inact?'badge-red':v.estado==='mantenimiento'?'badge-yellow':'badge-green' )+'">'+escHtml(v.estado||'activo')+'</span>'
+        +'</div>'
+        +'</div>'
+
+        // Horas totales
+        +'<div style="display:flex;align-items:center;gap:10px;padding:10px 0 6px;border-top:1px solid var(--border)">'
+        +'<span style="font-size:1.6rem;font-weight:700;color:var(--gold);font-family:\'DM Mono\',monospace">'+hDisplay+'</span>'
+        +'<span style="font-size:.72rem;color:var(--text2)">en medidor</span>'
+        +'<button onclick="mtHidEditarHoras('+v.id+',\''+escHtml(v.ficha)+'\')" '
+        +'style="margin-left:auto;padding:4px 10px;background:rgba(13,148,136,.12);border:1px solid rgba(13,148,136,.25);border-radius:6px;color:var(--gold);font-size:.75rem;cursor:pointer;font-weight:600">✏️ Actualizar</button>'
+        +'</div>'
+
+        // Barra mantenimiento (50h)
+        +barHtml(mant.pct,barColor(mant.cls),'🔧 Mantenimiento Hidráulico',mant.faltan,50)
+        // Barra válvulas (500h)
+        +barHtml(valv.pct,barColor(valv.cls),'⚙️ Cambio de Válvulas',valv.faltan,500)
+
+        // Badges de estado
+        +'<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">'
+        +'<span class="badge '+mant.cls+'">Mant: '+mant.txt+'</span>'
+        +'<span class="badge '+valv.cls+'">Válvulas: '+valv.txt+'</span>'
+        +'</div>'
+        +'</div>';
+    }
+
+    // ── tabla resumen ─────────────────────────────────────────
+    function tablaResumen(){
+      return '<div class="table-wrap" style="margin-top:28px">'
+        +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:.85rem;color:var(--text)">📋 Resumen General</div>'
+        +'<table class="data-table"><thead><tr>'
+        +'<th>Unidad</th><th>Estado</th><th>Horas Medidor</th>'
+        +'<th>Próx. Mant. (50h)</th><th>Estado Mant.</th>'
+        +'<th>Próx. Válvulas (500h)</th><th>Estado Válvulas</th>'
+        +'<th>Acciones</th>'
+        +'</tr></thead><tbody>'
+        +rows.map(v=>{
+          const h=v.horas_uso!=null?parseFloat(v.horas_uso):null;
+          const mant=estadoHid(h,v.horas_ultimo_mant_hidraulico,50);
+          const valv=estadoHid(h,v.horas_ultimo_cambio_valvulas,500);
+          const hStr=h!=null?h.toFixed(1)+' h':'—';
+          const mStr=mant.faltan!=null?(mant.faltan<=0?'Vencido +'+Math.abs(mant.faltan).toFixed(0)+'h':'Faltan '+mant.faltan.toFixed(0)+'h'):'—';
+          const vStr=valv.faltan!=null?(valv.faltan<=0?'Vencido +'+Math.abs(valv.faltan).toFixed(0)+'h':'Faltan '+valv.faltan.toFixed(0)+'h'):'—';
+          return '<tr>'
+            +'<td style="font-family:\'DM Mono\',monospace;font-weight:700;color:var(--gold)">'+escHtml(v.ficha)+'</td>'
+            +'<td><span class="badge '+(v.estado==='inactivo'?'badge-red':v.estado==='mantenimiento'?'badge-yellow':'badge-green')+'">'+escHtml(v.estado||'activo')+'</span></td>'
+            +'<td style="font-weight:700">'+hStr+'</td>'
+            +'<td style="color:'+barColor(mant.cls)+'">'+mStr+'</td>'
+            +'<td><span class="badge '+mant.cls+'">'+mant.txt+'</span></td>'
+            +'<td style="color:'+barColor(valv.cls)+'">'+vStr+'</td>'
+            +'<td><span class="badge '+valv.cls+'">'+valv.txt+'</span></td>'
+            +'<td><button onclick="mtHidEditarHoras('+v.id+',\''+escHtml(v.ficha)+'\')" class="btn btn-sm btn-outline">✏️ Horas</button></td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>';
+    }
+
+    el.innerHTML = `
+<div class="module-header">
+  <div class="module-header-left">
+    <h2>⚙️ Hidráulico — Horas de Uso & Válvulas</h2>
+    <div class="breadcrumb">Mini Trucks · AC-EU · Intervalo mant: 50 h · Intervalo válvulas: 500 h</div>
+  </div>
+  <button class="btn btn-gold" onclick="moduleLoaders['mt-hidraulico']()">↺ Actualizar</button>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-stat-row">
+  <div class="kpi-chip"><span class="kpi-chip-icon">🚛</span><div><div class="kpi-chip-val">${rows.length}</div><div class="kpi-chip-label">Unidades AC-EU</div></div></div>
+  <div class="kpi-chip"><span class="kpi-chip-icon">⏱️</span><div><div class="kpi-chip-val">${kConDatos}</div><div class="kpi-chip-label">Con horas registradas</div></div></div>
+  <div class="kpi-chip" style="border-color:${kMantVenc>0?'rgba(239,68,68,.3)':kMantProx>0?'rgba(245,158,11,.3)':'var(--border)'}">
+    <span class="kpi-chip-icon">🔧</span>
+    <div><div class="kpi-chip-val" style="color:${kMantVenc>0?'#ef4444':kMantProx>0?'#f59e0b':'var(--gold)'}">
+      ${kMantVenc>0?kMantVenc+' vencido'+(kMantVenc>1?'s':''):kMantProx>0?kMantProx+' próximo'+(kMantProx>1?'s':''):'Todo OK'}
+    </div><div class="kpi-chip-label">Mant. Hidráulico (50h)</div></div>
+  </div>
+  <div class="kpi-chip" style="border-color:${kValvVenc>0?'rgba(239,68,68,.3)':kValvProx>0?'rgba(245,158,11,.3)':'var(--border)'}">
+    <span class="kpi-chip-icon">⚙️</span>
+    <div><div class="kpi-chip-val" style="color:${kValvVenc>0?'#ef4444':kValvProx>0?'#f59e0b':'var(--gold)'}">
+      ${kValvVenc>0?kValvVenc+' vencido'+(kValvVenc>1?'s':''):kValvProx>0?kValvProx+' próximo'+(kValvProx>1?'s':''):'Todo OK'}
+    </div><div class="kpi-chip-label">Válvulas (500h)</div></div>
+  </div>
+  ${kSinDatos>0?`<div class="kpi-chip"><span class="kpi-chip-icon">⚠️</span><div><div class="kpi-chip-val" style="color:#f59e0b">${kSinDatos}</div><div class="kpi-chip-label">Sin horas registradas</div></div></div>`:''}
+</div>
+
+<!-- Cards por unidad -->
+<div class="veh-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+  ${rows.map(card).join('')}
+</div>
+
+${tablaResumen()}
+
+<div style="margin-top:16px;padding:12px 16px;background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:10px;font-size:.8rem;color:var(--text2)">
+  💡 <strong style="color:var(--gold)">Intervalos de mantenimiento:</strong>
+  🔧 Mantenimiento hidráulico cada <strong>50 horas</strong> de operación ·
+  ⚙️ Cambio de válvulas cada <strong>500 horas</strong> de operación.<br>
+  Para actualizar las horas de un vehículo, usa el botón ✏️ Actualizar en cada tarjeta.
+</div>`;
+
+  } catch(e){ el.innerHTML = '<div class="empty-state">Error: '+e.message+'</div>'; }
+};
+
+// ── modal actualizar horas MT ─────────────────────────────
+window.mtHidEditarHoras = function(vid, ficha){
+  openModal('modal-mthid-horas', '⏱ Actualizar Horas — '+ficha,
+    `<div class="form-grid">
+      <div class="form-group full">
+        <label>Horas totales en medidor</label>
+        <input id="mth-horas" type="number" step="0.1" min="0" placeholder="ej. 355.4" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Horas en último mant. hidráulico</label>
+        <input id="mth-mant" type="number" step="0.1" min="0" placeholder="ej. 300.0" class="form-input">
+      </div>
+      <div class="form-group">
+        <label>Horas en último cambio de válvulas</label>
+        <input id="mth-valv" type="number" step="0.1" min="0" placeholder="ej. 0.0" class="form-input">
+      </div>
+      <div class="form-group full" style="background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:8px;padding:10px">
+        <div style="font-size:.78rem;color:var(--text2)">🔧 Mant. hidráulico cada <strong>50h</strong> · ⚙️ Válvulas cada <strong>500h</strong></div>
+      </div>
+    </div>`,
+    [{label:'Guardar',cls:'btn-gold',async action(){
+      const horas = document.getElementById('mth-horas').value;
+      const mant  = document.getElementById('mth-mant').value;
+      const valv  = document.getElementById('mth-valv').value;
+      const payload = {};
+      if(horas!=='') payload.horas_uso = parseFloat(horas);
+      if(mant!=='')  payload.horas_ultimo_mant_hidraulico = parseFloat(mant);
+      if(valv!=='')  payload.horas_ultimo_cambio_valvulas = parseFloat(valv);
+      if(!Object.keys(payload).length){ toast('Ingresa al menos un valor','error'); return; }
+      const {error} = await sb.from('vehiculos').update(payload).eq('id',vid);
+      if(error){ toast('Error: '+error.message,'error'); return; }
+      delete cache.mt_hidraulico;
+      toast('Horas actualizadas para '+ficha,'success');
+      closeModal('modal-mthid-horas');
+      moduleLoaders['mt-hidraulico']();
+    }},{label:'Cancelar',cls:'btn-outline',action(){closeModal('modal-mthid-horas')}}]
+  );
 };
 
 // ─── AUTH ─────────────────────────────────────────────────
