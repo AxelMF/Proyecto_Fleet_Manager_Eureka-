@@ -272,6 +272,11 @@ tbody td{padding:10px 12px;color:var(--text)}
 .veh-card-row span:last-child{color:var(--text);font-weight:500;text-align:right;max-width:60%}
 .veh-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
 .veh-card-actions{display:flex;gap:4px}
+.horas-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;font-size:.68rem;font-weight:700;margin-top:5px}
+.horas-ok{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+.horas-warn{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.25)}
+.horas-danger{background:rgba(239,68,68,.14);color:#ef4444;border:1px solid rgba(239,68,68,.3)}
+.horas-block{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)}
 
 /* ── VIEW TOGGLE ────────────────────────────────────────── */
 .view-toggle{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0}
@@ -1404,6 +1409,18 @@ ${(window._vehView||'tabla')==='grid' ? `
       <div class="veh-card-row"><span>Marca/Modelo</span><span>${escHtml(v.marca)} ${escHtml(v.modelo||'')} ${v.anio||''}</span></div>
       <div class="veh-card-row"><span>Conductor</span><span>${escHtml(v.conductor||'—')}</span></div>
       <div class="veh-card-row"><span>Campamento</span><span>${escHtml(campMap[v.campamento_id]||'—')}</span></div>
+      ${(()=>{
+        if(!v.horas_uso) return '';
+        const h=parseFloat(v.horas_uso)||0,ult50=parseFloat(v.horas_ultimo_mant_hidraulico)||0,ult500=parseFloat(v.horas_ultimo_cambio_valvulas)||0;
+        const f50=(ult50+50)-h,f500=(ult500+500)-h;
+        const c50=f50<=0?'horas-danger':f50<=10?'horas-warn':'horas-ok';
+        const c500=f500<=0?'horas-danger':f500<=50?'horas-warn':'horas-ok';
+        return '<div class="horas-block">'
+          +'<span class="horas-badge horas-ok">⏱ '+h.toFixed(1)+' h</span>'
+          +'<span class="horas-badge '+c50+'">'+(f50<=0?'?? Mant.vencido +'+Math.abs(f50).toFixed(0)+'h':'?? Mant. en '+f50.toFixed(0)+'h')+'</span>'
+          +'<span class="horas-badge '+c500+'">'+(f500<=0?'?? Válvulas vencidas +'+Math.abs(f500).toFixed(0)+'h':'⚙ Válvulas en '+f500.toFixed(0)+'h')+'</span>'
+          +'</div>';
+      })()}
       <div class="veh-card-footer">
         <span style="font-size:.7rem;color:var(--text2)">${escHtml(v.color||'')} ${escHtml(v.municipio||'')} </span>
         <div class="veh-card-actions">
@@ -1420,7 +1437,7 @@ ${(window._vehView||'tabla')==='grid' ? `
   <table>
     <thead><tr>
       <th>Ficha</th><th>Placa</th><th>Marca / Modelo</th><th>Año</th>
-      <th>Campamento</th><th>Conductor</th><th>Estado</th><th>Acciones</th>
+      <th>Campamento</th><th>Conductor</th><th>Estado</th><th>Horas / Alertas</th><th>Acciones</th>
     </tr></thead>
     <tbody>
     ${rows.length ? rows.map(v=>`
@@ -1432,6 +1449,18 @@ ${(window._vehView||'tabla')==='grid' ? `
         <td>${escHtml(campMap[v.campamento_id]||'—')}</td>
         <td>${escHtml(v.conductor||'—')}</td>
         <td>${badgeEstado(v.estado)}</td>
+        <td style="white-space:nowrap">${(()=>{
+          if(!v.horas_uso) return '<span style="color:var(--text2);font-size:.8rem">—</span>';
+          const h=parseFloat(v.horas_uso)||0,ult50=parseFloat(v.horas_ultimo_mant_hidraulico)||0,ult500=parseFloat(v.horas_ultimo_cambio_valvulas)||0;
+          const f50=(ult50+50)-h,f500=(ult500+500)-h;
+          const c50=f50<=0?'horas-danger':f50<=10?'horas-warn':'horas-ok';
+          const c500=f500<=0?'horas-danger':f500<=50?'horas-warn':'horas-ok';
+          return '<div style="display:flex;flex-direction:column;gap:3px">'
+            +'<span class="horas-badge horas-ok" style="font-size:.62rem">⏱ '+h.toFixed(1)+' h</span>'
+            +'<span class="horas-badge '+c50+'" style="font-size:.62rem">'+(f50<=0?'?? Mant+'+Math.abs(f50).toFixed(0)+'h':'?? '+f50.toFixed(0)+'h')+'</span>'
+            +'<span class="horas-badge '+c500+'" style="font-size:.62rem">'+(f500<=0?'?? Válv+'+Math.abs(f500).toFixed(0)+'h':'⚙ '+f500.toFixed(0)+'h')+'</span>'
+            +'</div>';
+        })()}</td>
         <td>
           <div style="display:flex;gap:4px">
             ${!esViewer()?`<button class="btn btn-sm btn-outline" onclick="openVehModal(${v.id})" title="Editar">&#9999;&#65039;</button>
