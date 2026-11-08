@@ -1528,6 +1528,29 @@ function openVehModal(id) {
   <div class="form-group"><label>Chasis</label><input id="v-chasis" value="${escHtml(v.chasis||'')}"></div>
   <div class="form-group"><label>Motor</label><input id="v-motor" value="${escHtml(v.motor||'')}"></div>
   <div class="form-group full"><label>Nota</label><textarea id="v-nota">${escHtml(v.nota||'')}</textarea></div>
+</div>
+<div style="margin-top:14px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px">
+  <div style="font-size:.78rem;font-weight:700;color:var(--gold);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">⏱ Horas de Uso — Brazo Hidráulico</div>
+  <div class="form-grid" style="gap:10px">
+    <div class="form-group">
+      <label>Horas totales en medidor</label>
+      <input id="v-horas" type="number" step="0.1" min="0" placeholder="ej. 355.4" value="${v.horas_uso||''}">
+    </div>
+    <div class="form-group">
+      <label>Horas en último mantenimiento hidráulico</label>
+      <input id="v-horas-ult-mant" type="number" step="0.1" min="0" placeholder="ej. 300.0" value="${v.horas_ultimo_mant_hidraulico||''}">
+    </div>
+    <div class="form-group">
+      <label>Horas en último cambio de válvulas</label>
+      <input id="v-horas-ult-valv" type="number" step="0.1" min="0" placeholder="ej. 0.0" value="${v.horas_ultimo_cambio_valvulas||''}">
+    </div>
+    <div class="form-group">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:.75rem;color:var(--text2);line-height:1.6">
+        🔧 Mant. hidráulico: cada <strong style="color:var(--text)">50 h</strong><br>
+        ⚙ Cambio válvulas: cada <strong style="color:var(--text)">500 h</strong>
+      </div>
+    </div>
+  </div>
 </div>`,
   `<button class="btn btn-outline" onclick="closeModalForce()">Cancelar</button>
    <button class="btn btn-gold" onclick="saveVeh(${id||'null'})">Guardar</button>`);
@@ -1550,6 +1573,9 @@ async function saveVeh(id) {
     chasis:     document.getElementById('v-chasis').value.trim(),
     motor:      document.getElementById('v-motor').value.trim(),
     nota:       document.getElementById('v-nota').value.trim(),
+    horas_uso:  document.getElementById('v-horas').value !== '' ? parseFloat(document.getElementById('v-horas').value) : null,
+    horas_ultimo_mant_hidraulico:   document.getElementById('v-horas-ult-mant').value !== '' ? parseFloat(document.getElementById('v-horas-ult-mant').value) : null,
+    horas_ultimo_cambio_valvulas:   document.getElementById('v-horas-ult-valv').value !== '' ? parseFloat(document.getElementById('v-horas-ult-valv').value) : null,
   };
   try {
     let error;
