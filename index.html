@@ -6892,17 +6892,71 @@ moduleLoaders['mt-kilometraje'] = async function(){
   const el = document.getElementById('mod-mt-kilometraje');
   el.innerHTML = '<div class="empty-state">Cargando…</div>';
   try {
-    const {data, error} = await sb.from('mt_kilometraje')
-      .select('*,vehiculos(ficha,placa),mt_conductores(nombre)')
-      .order('fecha',{ascending:false});
+    const [{data,error}, {data:vehData}] = await Promise.all([
+      sb.from('mt_kilometraje').select('*,vehiculos(ficha,placa),mt_conductores(nombre)').order('fecha',{ascending:false}),
+      sb.from('vehiculos').select('id,ficha,placa,estado,km_actual,km_proximo_mantenimiento').eq('tipo_unidad','mini_truck').order('ficha'),
+    ]);
     if(error) throw error;
     cache.mt_kilometraje = data;
     const rows = data||[];
+    const vehs = (vehData||[]).filter(v=>v.km_actual!=null);
+
+    // ── Estado KM por unidad ──────────────────────────────
+    function kmEstado(v){
+      const actual=parseFloat(v.km_actual)||0;
+      const prox=parseFloat(v.km_proximo_mantenimiento)||0;
+      const faltan=prox-actual;
+      const pct=prox>0?Math.min(100,Math.round((actual/prox)*100)):0;
+      if(faltan<=0) return {cls:'badge-red',txt:'VENCIDO',faltan,pct:100,color:'#ef4444'};
+      if(faltan<=1000) return {cls:'badge-yellow',txt:'Próximo',faltan,pct,color:'#f59e0b'};
+      return {cls:'badge-green',txt:'Al día',faltan,pct,color:'var(--gold)'};
+    }
+
+    const estadoCards = vehs.length===0?'' :
+      '<div class="veh-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin-bottom:24px">'
+      +vehs.map(v=>{
+        const e=kmEstado(v);
+        const faltanStr=e.faltan<=0?'Vencido +'+Math.abs(e.faltan).toLocaleString()+' km':'Faltan '+e.faltan.toLocaleString()+' km';
+        const inact=v.estado==='inactivo';
+        return '<div class="veh-card" style="--vc-color:'+e.color+'">'
+          +'<div class="veh-card-top">'
+          +'<div class="veh-card-avatar">'+escHtml(v.ficha.replace('AC-EU-',''))+'</div>'
+          +'<div><div class="veh-card-ficha">'+escHtml(v.ficha)+'</div>'
+          +'<div class="veh-card-placa">'+escHtml(v.placa||'Sin placa')+'</div></div>'
+          +'<div style="margin-left:auto"><span class="badge '+(inact?'badge-red':'badge-green')+'">'+escHtml(v.estado||'activo')+'</span></div>'
+          +'</div>'
+          +'<div style="padding:10px 0 6px;border-top:1px solid var(--border)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+          +'<span style="font-size:1.5rem;font-weight:700;color:var(--gold);font-family:\'DM Mono\',monospace">'+parseFloat(v.km_actual).toLocaleString()+' km</span>'
+          +'<span class="badge '+e.cls+'">'+e.txt+'</span>'
+          +'</div>'
+          +'<div style="margin-top:8px;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden">'
+          +'<div style="height:100%;width:'+e.pct+'%;background:'+e.color+';border-radius:4px;transition:.4s"></div>'
+          +'</div>'
+          +'<div style="display:flex;justify-content:space-between;font-size:.72rem;margin-top:5px">'
+          +'<span style="color:var(--text2)">Próx. mant: <strong style="color:var(--text)">'+parseFloat(v.km_proximo_mantenimiento).toLocaleString()+' km</strong></span>'
+          +'<span style="color:'+e.color+';font-weight:600">'+faltanStr+'</span>'
+          +'</div>'
+          +'</div>'
+          +'<div style="margin-top:8px;display:flex;gap:6px">'
+          +(!esViewer()?'<button onclick="mtKmActualizar('+v.id+',\''+escHtml(v.ficha)+'\')" class="btn btn-sm btn-outline" style="flex:1">✏️ Actualizar KM</button>':'')
+          +'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+
     el.innerHTML = `
 <div class="module-header">
-  <h2>🛣️ Kilometraje Mini Trucks</h2>
-  ${!esViewer()?`<button class="btn" onclick="abrirFormMtKm()">+ Registrar KM</button>`:''}
+  <h2>🛣️ Kilometraje — Edeeste</h2>
+  <div style="display:flex;gap:8px">
+    ${!esViewer()?`<button class="btn btn-gold" onclick="abrirFormMtKm()">+ Registrar KM</button>`:''}
+  </div>
 </div>
+
+${vehs.length>0?`<div style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Estado actual por unidad</div>`:''}
+${estadoCards}
+
+<div style="font-size:.78rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">Historial de registros</div>
 <div style="margin-bottom:12px">${btnExport('mt-kilometraje','Kilometraje_MT')}</div>
 <div class="table-wrap">
 <table class="data-table">
@@ -6971,6 +7025,37 @@ moduleLoaders['mt-kilometraje'] = async function(){
       const {error} = await sb.from('mt_kilometraje').delete().eq('id',id);
       if(error){ toast('Error: '+error.message,'error'); return; }
       cache.mt_kilometraje=null; toast('Eliminado','success'); moduleLoaders['mt-kilometraje']();
+    };
+
+    window.mtKmActualizar = function(vid, ficha){
+      openModal('modal-mtkm-act','🛣️ Actualizar KM — '+ficha,
+        `<div class="form-grid">
+          <div class="form-group full">
+            <label>Kilometraje actual en medidor</label>
+            <input id="mka-actual" type="number" min="0" placeholder="ej. 50736" class="form-input">
+          </div>
+          <div class="form-group full">
+            <label>Próximo mantenimiento (km)</label>
+            <input id="mka-prox" type="number" min="0" placeholder="ej. 55736" class="form-input">
+          </div>
+          <div class="form-group full" style="background:rgba(13,148,136,.06);border:1px solid rgba(13,148,136,.2);border-radius:8px;padding:10px">
+            <div style="font-size:.78rem;color:var(--text2)">🔧 Intervalo de mantenimiento: cada <strong>5,000 km</strong></div>
+          </div>
+        </div>`,
+        [{label:'Guardar',cls:'btn-gold',async action(){
+          const actual = document.getElementById('mka-actual').value;
+          const prox   = document.getElementById('mka-prox').value;
+          if(!actual){ toast('Ingresa el kilometraje actual','error'); return; }
+          const payload = { km_actual: parseFloat(actual) };
+          if(prox) payload.km_proximo_mantenimiento = parseFloat(prox);
+          else payload.km_proximo_mantenimiento = parseFloat(actual)+5000;
+          const {error} = await sb.from('vehiculos').update(payload).eq('id',vid);
+          if(error){ toast('Error: '+error.message,'error'); return; }
+          toast('KM actualizado para '+ficha,'success');
+          closeModal('modal-mtkm-act');
+          moduleLoaders['mt-kilometraje']();
+        }},{label:'Cancelar',cls:'btn-outline',action(){closeModal('modal-mtkm-act')}}]
+      );
     };
   } catch(e){ el.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
 };
