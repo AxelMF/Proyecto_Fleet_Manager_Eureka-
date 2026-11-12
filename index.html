@@ -657,6 +657,7 @@ tbody td{padding:10px 12px;color:var(--text)}
       <button class="snav-item" data-mod="mt-asignaciones" onclick="nav('mt-asignaciones')">📎 Asignaciones</button>
       <button class="snav-item" data-mod="mt-reparaciones" onclick="nav('mt-reparaciones')">🔨 Reparaciones</button>
       <button class="snav-item" data-mod="mt-hidraulico"   onclick="nav('mt-hidraulico')">⚙️ Hidráulico / Horas</button>
+      <button class="snav-item" data-mod="mt-proyecto"     onclick="nav('mt-proyecto')">🔬 Proyecto Mini Trucks</button>
       <button class="snav-item" data-mod="mt-polizas"      onclick="nav('mt-polizas')">📋 Pólizas</button>
       <button class="snav-item" data-mod="mt-novedades"    onclick="nav('mt-novedades')">🪟 Novedades</button>
     </div>
@@ -782,6 +783,7 @@ tbody td{padding:10px 12px;color:var(--text)}
     <div id="mod-mt-polizas" class="module"><div class="empty-state">Cargando pólizas MT…</div></div>
     <div id="mod-mt-novedades" class="module"><div class="empty-state">Cargando novedades MT…</div></div>
     <div id="mod-mt-hidraulico" class="module"><div class="empty-state">Cargando módulo hidráulico…</div></div>
+    <div id="mod-mt-proyecto"  class="module"><div class="empty-state">Cargando Proyecto Mini Trucks…</div></div>
   </div>
 </div>
 
@@ -890,7 +892,7 @@ const SECTIONS = {
   flota:         ['vehiculos','conductores','campamentos','supervisores','polizas','combustible','novedades'],
   mantenimiento: ['mantenimiento','reparaciones','pinchazos','mecanica','mecanica-dash','historial'],
   inventario:    ['inventario','neumaticos','baterias'],
-  'mini-trucks': ['mt-dashboard','mt-unidades','mt-conductores','mt-combustible','mt-kilometraje','mt-herramientas','mt-asignaciones','mt-reparaciones','mt-hidraulico','mt-polizas','mt-novedades'],
+  'mini-trucks': ['mt-dashboard','mt-unidades','mt-conductores','mt-combustible','mt-kilometraje','mt-herramientas','mt-asignaciones','mt-reparaciones','mt-hidraulico','mt-proyecto','mt-polizas','mt-novedades'],
   proveedores:   ['pt-dashboard','pt-proveedores','pt-talleres','pt-cotizaciones','pt-evaluaciones'],
   admin:         ['compras','gastos','usuarios','portal-mec'],
 };
@@ -7606,6 +7608,181 @@ window.mtHidEditarHoras = function(vid, ficha){
       moduleLoaders['mt-hidraulico']();
     }},{label:'Cancelar',cls:'btn-outline',action(){closeModal('modal-mthid-horas')}}]
   );
+};
+
+// ─── PROYECTO MINI TRUCKS ────────────────────────────────
+moduleLoaders['mt-proyecto'] = async function(){
+  const el = document.getElementById('mod-mt-proyecto');
+  el.innerHTML = `<div class="empty-state">Cargando…</div>`;
+
+  // Fetch vehiculos Mini Trucks
+  const { data: veh, error: eveh } = await sb
+    .from('vehiculos')
+    .select('id,ficha,km_actual,km_proximo_mantenimiento,horas_uso,horas_ultimo_mant_hidraulico,horas_ultimo_cambio_valvulas')
+    .like('ficha','AC-EU-1%')
+    .in('ficha',['AC-EU-1440','AC-EU-1441','AC-EU-1442','AC-EU-1443','AC-EU-1444','AC-EU-1445','AC-EU-1446'])
+    .order('ficha');
+  if(eveh){ el.innerHTML=`<div class="empty-state">Error: ${escHtml(eveh.message)}</div>`; return; }
+
+  // Fetch reparaciones Mini Trucks
+  const ids = (veh||[]).map(v=>v.id);
+  let reps = [];
+  if(ids.length){
+    const { data: rd } = await sb
+      .from('reparaciones')
+      .select('id,vehiculo_id,fecha,tipo,estado,categoria,notas,taller,tecnico_asignado')
+      .in('vehiculo_id', ids)
+      .order('fecha', { ascending: false });
+    reps = rd || [];
+  }
+
+  const totalUnidades  = veh.length;
+  const conHoras       = veh.filter(v => v.horas_uso != null).length;
+  const totalReps      = reps.length;
+  const completados    = reps.filter(r => r.estado === 'Completado').length;
+  const pendientes     = reps.filter(r => r.estado !== 'Completado').length;
+
+  // Alertas hidráulicas
+  const alertMant  = veh.filter(v => v.horas_uso != null && v.horas_ultimo_mant_hidraulico != null && (v.horas_uso - v.horas_ultimo_mant_hidraulico) >= 45).length;
+  const alertValv  = veh.filter(v => v.horas_uso != null && (v.horas_uso - (v.horas_ultimo_cambio_valvulas||0)) >= 480).length;
+
+  // Disponibilidad = unidades sin reparacion pendiente / total
+  const conPend   = new Set(reps.filter(r=>r.estado!=='Completado').map(r=>r.vehiculo_id));
+  const disponibles = veh.filter(v => !conPend.has(v.id)).length;
+  const dispPct   = Math.round((disponibles/totalUnidades)*100);
+
+  // Incidencias por categoría
+  const catCount = {};
+  reps.forEach(r=>{ const c=r.categoria||'General'; catCount[c]=(catCount[c]||0)+1; });
+  const catRows = Object.entries(catCount).sort((a,b)=>b[1]-a[1])
+    .map(([c,n])=>`<tr><td>${escHtml(c)}</td><td><b>${n}</b></td></tr>`).join('');
+
+  // Estado km por unidad
+  function estadoKm(v){
+    if(!v.km_actual) return {cls:'badge-gray',txt:'Sin datos'};
+    const rest = (v.km_proximo_mantenimiento||0) - v.km_actual;
+    if(rest<=0)    return {cls:'badge-red',txt:'Vencido'};
+    if(rest<=1000) return {cls:'badge-yellow',txt:`${rest.toLocaleString()} km`};
+    return {cls:'badge-green',txt:`${rest.toLocaleString()} km`};
+  }
+
+  // Estado hidráulico por unidad
+  function estadoHid(v){
+    if(!v.horas_uso) return {cls:'badge-gray',txt:'Sin horas'};
+    const dMant = v.horas_uso - (v.horas_ultimo_mant_hidraulico||0);
+    const dValv = v.horas_uso - (v.horas_ultimo_cambio_valvulas||0);
+    if(dValv >= 500) return {cls:'badge-red',txt:'Válvulas vencidas'};
+    if(dValv >= 480) return {cls:'badge-yellow',txt:`Válvulas: ${Math.round(500-dValv)}h`};
+    if(dMant >= 50)  return {cls:'badge-red',txt:'Mant. vencido'};
+    if(dMant >= 45)  return {cls:'badge-yellow',txt:`Mant: ${Math.round(50-dMant)}h`};
+    return {cls:'badge-green',txt:'OK'};
+  }
+
+  const unidadRows = veh.map(v=>{
+    const km  = estadoKm(v);
+    const hid = estadoHid(v);
+    const repV = reps.filter(r=>r.vehiculo_id===v.id);
+    const pend = repV.filter(r=>r.estado!=='Completado').length;
+    const dispCls = pend>0?'badge-red':'badge-green';
+    const dispTxt = pend>0?'Fuera servicio':'Operativa';
+    return `<tr>
+      <td><b>${escHtml(v.ficha)}</b></td>
+      <td>${v.horas_uso!=null?parseFloat(v.horas_uso).toLocaleString()+' h':'—'}</td>
+      <td><span class="badge ${hid.cls}">${escHtml(hid.txt)}</span></td>
+      <td>${v.km_actual!=null?parseInt(v.km_actual).toLocaleString()+' km':'—'}</td>
+      <td><span class="badge ${km.cls}">${escHtml(km.txt)}</span></td>
+      <td><b>${repV.length}</b></td>
+      <td><span class="badge ${dispCls}">${dispTxt}</span></td>
+    </tr>`;
+  }).join('');
+
+  // Últimas 10 incidencias
+  const repRows = reps.slice(0,10).map(r=>{
+    const fv = veh.find(v=>v.id===r.vehiculo_id);
+    const estadoCls = r.estado==='Completado'?'badge-green':'badge-red';
+    return `<tr>
+      <td>${escHtml(r.fecha||'')}</td>
+      <td><b>${escHtml(fv?.ficha||'')}</b></td>
+      <td>${escHtml(r.categoria||'—')}</td>
+      <td style="max-width:260px;white-space:normal;font-size:.8rem">${escHtml((r.notas||'').substring(0,120))}${(r.notas||'').length>120?'…':''}</td>
+      <td><span class="badge ${estadoCls}">${escHtml(r.estado||'')}</span></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div style="padding:0 2px">
+    <!-- Encabezado del proyecto -->
+    <div style="background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;padding:20px 24px;margin-bottom:20px;color:#fff">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+        <span style="font-size:1.6rem">🔬</span>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;letter-spacing:.3px">Proyecto Mini Trucks — Edeeste</div>
+          <div style="font-size:.82rem;opacity:.85">Plataforma ForceLift 12Ai · Fabricante: Changan · Seguimiento de resultados</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+      ${[
+        ['🚛','Unidades',totalUnidades,''],
+        ['✅','Operativas',disponibles,dispPct+'%'],
+        ['⚠️','Fuera servicio',conPend.size,''],
+        ['🔧','Incidencias',totalReps,''],
+        ['📋','Completadas',completados,''],
+        ['⏳','Pendientes',pendientes,''],
+        ['⏱️','Con horas reg.',conHoras,`de ${totalUnidades}`],
+        ['🚨','Alertas hid.',alertMant+alertValv,''],
+      ].map(([ic,lb,v,sub])=>`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.3rem">${ic}</div>
+          <div style="font-size:1.5rem;font-weight:700;color:var(--gold)">${v}</div>
+          <div style="font-size:.75rem;color:var(--text2)">${lb}</div>
+          ${sub?`<div style="font-size:.7rem;color:var(--text2)">${sub}</div>`:''}
+        </div>`).join('')}
+    </div>
+
+    <!-- Tabla de unidades -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px">
+      <div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px">
+        <span>🚛</span> Estado por Unidad
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table" style="width:100%">
+          <thead><tr>
+            <th>Vehículo</th><th>Horas uso</th><th>Est. hidráulico</th>
+            <th>Km actual</th><th>Km prox. mant.</th><th>Incidencias</th><th>Disponibilidad</th>
+          </tr></thead>
+          <tbody>${unidadRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Grid inferior: categorías + últimas incidencias -->
+    <div style="display:grid;grid-template-columns:200px 1fr;gap:16px;margin-bottom:20px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:.85rem">📊 Por categoría</div>
+        <table class="data-table" style="width:100%">
+          <thead><tr><th>Categoría</th><th>#</th></tr></thead>
+          <tbody>${catRows}</tbody>
+        </table>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:600;font-size:.85rem">🔨 Últimas incidencias</div>
+        <div style="overflow-x:auto">
+          <table class="data-table" style="width:100%">
+            <thead><tr><th>Fecha</th><th>Vehículo</th><th>Categoría</th><th>Descripción</th><th>Estado</th></tr></thead>
+            <tbody>${repRows||'<tr><td colspan="5" style="text-align:center;color:var(--text2)">Sin registros</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nota para fabricante -->
+    <div style="background:rgba(13,148,136,.08);border:1px solid rgba(13,148,136,.25);border-radius:10px;padding:16px 20px;font-size:.83rem;color:var(--text2)">
+      <b style="color:var(--gold)">📌 Nota de seguimiento:</b> Este módulo registra exclusivamente los datos de los 7 Mini Trucks Changan Star Truck (AC-EU-1440 al 1446) de la operación Edeeste. Las métricas aquí mostradas son independientes del resto de la flota y están orientadas a la medición de resultados para reporte al fabricante.
+    </div>
+  </div>`;
 };
 
 // ─── AUTH ─────────────────────────────────────────────────
